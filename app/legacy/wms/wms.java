@@ -13,9 +13,27 @@ class Server {
         try
         {
             ss = new ServerSocket(port);
-            System.out.println("Server started");
 
-            while(true) {
+        }catch (IOException e) {
+            e.printStackTrace();
+        }      
+    }
+
+    public ServerSocket getServerSocket() {
+        return ss;
+    }
+}
+
+class ServerThread extends Thread {
+    private ServerSocket ss;
+
+    public ServerThread(ServerSocket ss) {
+        this.ss = ss;
+    }
+
+    public void run() {
+        try {
+            while (true) {
                 System.out.println("Waiting for a client ...");
 
                 Socket s = ss.accept();
@@ -24,12 +42,9 @@ class Server {
                 ClientHandler ch = new ClientHandler(s);
                 ch.start();
             }
-
-        }catch (IOException e) {
+        } catch (IOException e) {
             e.printStackTrace();
         }
-
-            
     }
 }
 
@@ -65,8 +80,6 @@ class ClientHandler extends Thread {
                             System.out.println("Closing connection");
                             return;
                         default:
-                            System.out.println(m);
-                            out.writeUTF("Message received: " + m + "\n");
                             break;
                     }
                     m="";
@@ -92,8 +105,33 @@ class ClientHandler extends Thread {
 }
 
 public class wms {
-    public static void main(String args[])
-    {
-        Server s = new Server(5000);
+    public static void main(String args[]){
+        if(args.length < 1) {
+            System.out.println("Error: port undefined");
+            System.out.println("Usage: java wms <port>");
+            return;
+        }
+        Server s = new Server(Integer.parseInt(args[0]));
+
+        ServerThread st = new ServerThread(s.getServerSocket());
+        st.start();
+
+        String input = "";
+        do{
+            input = System.console().readLine();
+
+            String[] inputList = input.split(" ");
+            
+            switch (inputList[0]) {
+                case "terminate":
+                    System.out.println("Terminating server");
+                    System.exit(0);
+                default:
+                    System.out.println("Unknown command");
+                    break;
+            }
+
+        }while(!input.equals("terminate"));
+
     }
 }
