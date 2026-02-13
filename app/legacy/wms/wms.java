@@ -1,10 +1,88 @@
 import java.net.*;
 import java.io.*;
+import java.util.Vector;
+import java.util.Map;
+
+class Inventory{
+    enum ItemState{
+        ARRIVED,
+        PACKED,
+        SHIPPED
+    }
+
+    private static java.util.Map<Integer, ItemState> inventory = new java.util.HashMap<>();
+    private static Integer lastID = 0;
+
+    public static synchronized Integer addItem(){
+        Integer tmpID = lastID;
+        inventory.put(tmpID, ItemState.ARRIVED);
+        lastID++;
+        return tmpID;
+    }
+
+    public static synchronized void packItem(Integer id){
+        if(inventory.containsKey(id) && inventory.get(id) == ItemState.ARRIVED) {
+            inventory.put(id, ItemState.PACKED);
+        }
+    }
+
+    public static synchronized void shipItem(Integer id){
+        if(inventory.containsKey(id) && inventory.get(id) == ItemState.PACKED) {
+            inventory.put(id, ItemState.SHIPPED);
+        }
+    }
+
+    public static synchronized ItemState getItemState(Integer id){
+        if(inventory.containsKey(id)) {
+            return inventory.get(id);
+        }
+        return null;
+    }
+}
+
+class Client{
+    public Socket s;
+    public DataInputStream in;
+    public DataOutputStream out;
+
+    public Client(Socket s_in, DataInputStream in_in, DataOutputStream out_in){
+        s = s_in;
+        in = in_in;
+        out = out_in;
+    }
+}
 
 class Server {
   
     // Initialize socket and input stream
     private ServerSocket ss = null;
+    private static Vector<Client> clients = new Vector<>();
+
+    public static void publish(String msg){
+        for(Client client : clients){
+            try{
+                client.out.write((msg + '\n').getBytes());
+            }catch (IOException e) {
+            e.printStackTrace();
+        }
+        }
+    }
+
+    public static void newListner(Socket s, DataInputStream in, DataOutputStream out){
+        clients.add(new Client(s,in,out));
+    }
+
+    public static void removeListners(){
+        for(Client client : clients){
+            try{
+                client.s.close();
+                client.in.close();
+                client.out.close();
+            }catch (IOException e) {
+            e.printStackTrace();
+        }
+        }
+    }
 
     // Constructor with port
     public Server(int port) {
@@ -76,10 +154,14 @@ class ClientHandler extends Thread {
                     String[] parts = m.split(" ");
                     
                     switch (parts[0]) {
-                        case "terminate":
+                        case "exit":
                             System.out.println("Closing connection");
                             return;
+                        case "listen":
+                            Server.newListner(s,in,out);
+                            break;
                         default:
+                            System.out.println(m);
                             break;
                     }
                     m="";
@@ -105,6 +187,7 @@ class ClientHandler extends Thread {
 }
 
 public class wms {
+
     public static void main(String args[]){
         if(args.length < 1) {
             System.out.println("Error: port undefined");
@@ -121,11 +204,63 @@ public class wms {
             input = System.console().readLine();
 
             String[] inputList = input.split(" ");
-            
+            Integer id;
+
             switch (inputList[0]) {
-                case "terminate":
+                case "exit":
                     System.out.println("Terminating server");
                     System.exit(0);
+                    break;
+                case "add":
+                    id = Inventory.addItem();
+                    System.out.println("Item added with ID: " + id);
+                    Server.publish("added " + id);
+                    break;
+                case "pack":
+                    if(inputList.length > 1) {
+                        try {
+                            id = Integer.parseInt(inputList[1]);
+                            Inventory.packItem(id);
+                            System.out.println("Item packed with ID: " + id);
+                            Server.publish("packed " + id);
+                        } catch (NumberFormatException e) {
+                            System.out.println("Invalid item ID");
+                        }
+                    } else {
+                        System.out.println("Missing item ID");
+                    }
+                    break;
+                case "ship":
+                    if(inputList.length > 1) {
+                        try {
+                            id = Integer.parseInt(inputList[1]);
+                            Inventory.shipItem(id);
+                            System.out.println("Item shipped with ID: " + id);
+                            Server.publish("shipped " + id);
+                        } catch (NumberFormatException e) {
+                            System.out.println("Invalid item ID");
+                        }
+                    } else {
+                        System.out.println("Missing item ID");
+                    }
+                    break;
+                case "state":
+                    if(inputList.length > 1) {
+                        try {
+                            id = Integer.parseInt(inputList[1]);
+                            Inventory.ItemState state = Inventory.getItemState(id);
+                            if(state != null) {
+                                System.out.println("Item state for ID " + id + ": " + state);
+                            } else {
+                                System.out.println("Item not found with ID: " + id);
+                            }
+                        } catch (NumberFormatException e) {
+                            System.out.println("Invalid item ID");
+                        }
+                    } else {
+                        System.out.println("Missing item ID");
+                    }
+                    break;
                 default:
                     System.out.println("Unknown command");
                     break;
