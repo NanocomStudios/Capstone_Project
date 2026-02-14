@@ -1,7 +1,6 @@
 import java.net.*;
 import java.io.*;
-import java.util.Vector;
-import java.util.Map;
+import java.util.*;
 
 class Inventory{
     enum ItemState{
@@ -10,7 +9,7 @@ class Inventory{
         SHIPPED
     }
 
-    private static java.util.Map<Integer, ItemState> inventory = new java.util.HashMap<>();
+    private static Map<Integer, ItemState> inventory = new TreeMap<>();
     private static Integer lastID = 0;
 
     public static synchronized Integer addItem(){
@@ -48,6 +47,10 @@ class Inventory{
         }
         return null;
     }
+
+    public static synchronized Map<Integer, ItemState> getItemList(){
+        return inventory;
+    }
 }
 
 class Client{
@@ -69,6 +72,7 @@ class Server {
     private static Vector<Client> clients = new Vector<>();
 
     public static void publish(String msg){
+        System.out.println("published: " + msg);
         for(Client client : clients){
             try{
                 client.out.write((msg + '\r' + '\n').getBytes());
@@ -161,7 +165,6 @@ class ClientHandler extends Thread {
             String m = "";
             while (true) {
                 char c = (char) in.read();
-            
                 if(c == '\n') {
                     m = m.trim();
 
@@ -250,7 +253,7 @@ class WarehouseHandler{
                         id = Integer.parseInt(inputList[1]);
                         Inventory.ItemState state = Inventory.getItemState(id);
                         if(state != null) {
-                            return("state " + id + " " + state);
+                            return(id + " " + state);
                         } else {
                             return("error item_not_found");
                         }
@@ -260,6 +263,18 @@ class WarehouseHandler{
                 } else {
                     return("error missing_ID");
                 }
+            case "list":
+                Map<Integer, Inventory.ItemState> itemList = Inventory.getItemList();
+                String output = "";
+
+                for (Integer key : itemList.keySet()) {
+                    output += key + " " + itemList.get(key) + "\r\n";
+                }
+                output += "done";
+                return output;
+            case "":
+                return("");
+
             default:
                 return("error unknown_command");
         }
