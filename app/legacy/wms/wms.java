@@ -16,21 +16,31 @@ class Inventory{
     public static synchronized Integer addItem(){
         Integer tmpID = lastID;
         inventory.put(tmpID, ItemState.ARRIVED);
+        Server.publish("added " + tmpID);
         lastID++;
         return tmpID;
     }
 
-    public static synchronized void packItem(Integer id){
+    public static synchronized Boolean packItem(Integer id){
         if(inventory.containsKey(id) && inventory.get(id) == ItemState.ARRIVED) {
             inventory.put(id, ItemState.PACKED);
+            Server.publish("packed " + id);
+            return true;
+        }else{
+            return false;
         }
     }
 
-    public static synchronized void shipItem(Integer id){
+    public static synchronized Boolean shipItem(Integer id){
         if(inventory.containsKey(id) && inventory.get(id) == ItemState.PACKED) {
             inventory.put(id, ItemState.SHIPPED);
+            Server.publish("shipped " + id);
+            return true;
+        }else{
+            return false;
         }
     }
+    
 
     public static synchronized ItemState getItemState(Integer id){
         if(inventory.containsKey(id)) {
@@ -61,7 +71,7 @@ class Server {
     public static void publish(String msg){
         for(Client client : clients){
             try{
-                client.out.write((msg + '\n').getBytes());
+                client.out.write((msg + '\r' + '\n').getBytes());
             }catch (IOException e) {
             e.printStackTrace();
         }
@@ -137,12 +147,16 @@ class ClientHandler extends Thread {
         try {
             this.in = new DataInputStream(new BufferedInputStream(s.getInputStream()));
             this.out = new DataOutputStream(s.getOutputStream());
+            out.write(("Warehouse Management Portal\r\n").getBytes());
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
     public void run() {
+
+        WarehouseHandler warehouse = new WarehouseHandler();
+
         try {
             String m = "";
             while (true) {
@@ -151,19 +165,19 @@ class ClientHandler extends Thread {
                 if(c == '\n') {
                     m = m.trim();
 
-                    String[] parts = m.split(" ");
-                    
-                    switch (parts[0]) {
-                        case "exit":
-                            System.out.println("Closing connection");
-                            return;
-                        case "listen":
-                            Server.newListner(s,in,out);
-                            break;
-                        default:
-                            System.out.println(m);
-                            break;
+                    String res = warehouse.execute(m);
+
+                    if(res == "listen"){
+                        Server.newListner(s,in,out);
+                        out.write(("listning\r\n").getBytes());
+                    }else{
+                        out.write((res + "\r\n").getBytes());
                     }
+
+                    if(res == "terminated"){
+                        return;
+                    }
+
                     m="";
                 }else {
                     m += c;
@@ -186,6 +200,73 @@ class ClientHandler extends Thread {
     }
 }
 
+class WarehouseHandler{
+
+    public String execute(String input){
+        String[] inputList = input.split(" ");
+        Integer id;
+
+        switch (inputList[0]) {
+            case "exit":
+                return("terminated");
+            case "listen":
+                return("listen");
+            case "add":
+                id = Inventory.addItem();
+                return("added " + id);
+            case "pack":
+                if(inputList.length > 1) {
+                    try {
+                        id = Integer.parseInt(inputList[1]);
+                        if(Inventory.packItem(id)){
+                            return("packed " + id);
+                        }else{
+                            return("error item_not_found");
+                        }
+                    } catch (NumberFormatException e) {
+                        return("error invalid_ID");
+                    }
+                } else {
+                    return("error missing_ID");
+                }
+            case "ship":
+                if(inputList.length > 1) {
+                    try {
+                        id = Integer.parseInt(inputList[1]);
+                        if(Inventory.shipItem(id)){
+                            return("shipped " + id);
+                        }else{
+                            return("error item_not_found");
+                        }
+                    } catch (NumberFormatException e) {
+                        return("error invalid_ID");
+                    }
+                } else {
+                    return("error missing_ID");
+                }
+            case "state":
+                if(inputList.length > 1) {
+                    try {
+                        id = Integer.parseInt(inputList[1]);
+                        Inventory.ItemState state = Inventory.getItemState(id);
+                        if(state != null) {
+                            return("state " + id + " " + state);
+                        } else {
+                            return("error item_not_found");
+                        }
+                    } catch (NumberFormatException e) {
+                        return("error invalid_ID");
+                    }
+                } else {
+                    return("error missing_ID");
+                }
+            default:
+                return("error unknown_command");
+        }
+    }
+
+}
+
 public class wms {
 
     public static void main(String args[]){
@@ -199,74 +280,25 @@ public class wms {
         ServerThread st = new ServerThread(s.getServerSocket());
         st.start();
 
+        WarehouseHandler warehouse = new WarehouseHandler();
+
         String input = "";
         do{
             input = System.console().readLine();
 
-            String[] inputList = input.split(" ");
-            Integer id;
+            String res = warehouse.execute(input);
 
-            switch (inputList[0]) {
-                case "exit":
-                    System.out.println("Terminating server");
-                    System.exit(0);
-                    break;
-                case "add":
-                    id = Inventory.addItem();
-                    System.out.println("Item added with ID: " + id);
-                    Server.publish("added " + id);
-                    break;
-                case "pack":
-                    if(inputList.length > 1) {
-                        try {
-                            id = Integer.parseInt(inputList[1]);
-                            Inventory.packItem(id);
-                            System.out.println("Item packed with ID: " + id);
-                            Server.publish("packed " + id);
-                        } catch (NumberFormatException e) {
-                            System.out.println("Invalid item ID");
-                        }
-                    } else {
-                        System.out.println("Missing item ID");
-                    }
-                    break;
-                case "ship":
-                    if(inputList.length > 1) {
-                        try {
-                            id = Integer.parseInt(inputList[1]);
-                            Inventory.shipItem(id);
-                            System.out.println("Item shipped with ID: " + id);
-                            Server.publish("shipped " + id);
-                        } catch (NumberFormatException e) {
-                            System.out.println("Invalid item ID");
-                        }
-                    } else {
-                        System.out.println("Missing item ID");
-                    }
-                    break;
-                case "state":
-                    if(inputList.length > 1) {
-                        try {
-                            id = Integer.parseInt(inputList[1]);
-                            Inventory.ItemState state = Inventory.getItemState(id);
-                            if(state != null) {
-                                System.out.println("Item state for ID " + id + ": " + state);
-                            } else {
-                                System.out.println("Item not found with ID: " + id);
-                            }
-                        } catch (NumberFormatException e) {
-                            System.out.println("Invalid item ID");
-                        }
-                    } else {
-                        System.out.println("Missing item ID");
-                    }
-                    break;
-                default:
-                    System.out.println("Unknown command");
-                    break;
+            if(res == "listen"){
+                System.out.println("Cannot join as a listner!");
+            }else{
+                System.out.println(res);
             }
 
-        }while(!input.equals("terminate"));
+            if(res == "terminated"){
+                System.exit(0);
+            }
+
+        }while(true);
 
     }
 }
