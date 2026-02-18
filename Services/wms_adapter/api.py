@@ -54,5 +54,9 @@ def list_items():
         return adapter.list_items()
     except Exception as e:
         return {"response": f"Error", "error": str(e)}
+    
+@wms.get("/health")
+def health_check():
+    return {"status": "UP"}
 
 
