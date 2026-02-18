@@ -10,8 +10,8 @@ class WMSAdapter:
             self.s.connect((ip, port))
         except Exception as e:
             self.s = None
-            return {"response": f"Failed to connect to server at {ip}:{port}", "error": str(e)}
-        return {"response": f"Connected to server at {ip}:{port}", "server_response": self.s.recv(1024).decode()}
+            return {"status": "failed", "response": f"Failed to connect to server at {ip}:{port}", "error": str(e)}
+        return {"status": "success", "response": f"Connected to server at {ip}:{port}", "server_response": self.s.recv(1024).decode()}
 
     def disconnect(self):
         if self.s is None:
