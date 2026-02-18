@@ -1,12 +1,16 @@
+import time
 from fastapi import FastAPI
-from app.services.wms_adapter.wms_adapter import WMSAdapter
+from adapter import WMSAdapter
+import os
+
+
 
 wms = FastAPI()
 adapter = WMSAdapter()
 
-@wms.get("/connect/{ip}/{port}")
-def connect_to_server(ip: str, port: int):
-    return adapter.connect(ip,port)
+while(adapter.connect(os.getenv("LEGACY_WMS_HOST", "127.0.0.1"), int(os.getenv("LEGACY_WMS_PORT", 8000)))["status"] != "success"):
+    print("Failed to connect to server, retrying...")
+    time.sleep(30)
 
 @wms.get("/disconnect")
 def disconnect_from_server():

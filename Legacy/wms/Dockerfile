@@ -1,7 +1,7 @@
 FROM gcr.io/distroless/java17-debian12
 
-WORKDIR .
-COPY . ./wms.jar
+WORKDIR /app
+COPY wms.jar /app/
 
 EXPOSE 8000
 
