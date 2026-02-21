@@ -4,14 +4,16 @@ class WMSAdapter:
     def __init__(self):
         self.s = None
 
-    def connect(self, ip: str, port: int):
+    def connect(self, host: str, port: int):
         self.s = socket.socket()
         try:
-            self.s.connect((ip, port))
+            host_ip = socket.gethostbyname(host)
+            print("Connecting to server at", host_ip, ":", port)
+            self.s.connect((host_ip, port))
         except Exception as e:
             self.s = None
-            return {"status": "failed", "response": f"Failed to connect to server at {ip}:{port}", "error": str(e)}
-        return {"status": "success", "response": f"Connected to server at {ip}:{port}", "server_response": self.s.recv(1024).decode()}
+            return {"status": "failed", "response": f"Failed to connect to server at {host_ip}:{port}", "error": str(e)}
+        return {"status": "success", "response": f"Connected to server at {host_ip}:{port}", "server_response": self.s.recv(1024).decode()}
 
     def disconnect(self):
         if self.s is None:

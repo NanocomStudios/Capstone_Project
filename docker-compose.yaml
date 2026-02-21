@@ -1,0 +1,35 @@
+name: swiftlogistics
+
+services:
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: rabbitmq-diagnostics check_port_connectivity
+      interval: 1s
+      timeout: 3s
+      retries: 30
+
+  wms_legacy:
+    build: Legacy/wms/.
+    ports:
+      - "9000:8000"
+  
+  wms_adapter:
+    build: Services/wms_adapter/.
+    ports:
+      - "8001:8000"
+    environment:
+      LEGACY_WMS_HOST: host.docker.internal # Use host.docker.internal to connect to the host machine's services
+      LEGACY_WMS_PORT: "9000"
+    depends_on:
+      wms_legacy:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy

@@ -1,16 +1,22 @@
 import time
 from fastapi import FastAPI
 from adapter import WMSAdapter
+from pubsub_adapter import WMSPubSubAdapter
+from threading import Thread
 import os
-
 
 
 wms = FastAPI()
 adapter = WMSAdapter()
+print(os.getenv("LEGACY_WMS_HOST", "localhost"), os.getenv("LEGACY_WMS_PORT", 8000))
 
-while(adapter.connect(os.getenv("LEGACY_WMS_HOST", "127.0.0.1"), int(os.getenv("LEGACY_WMS_PORT", 8000)))["status"] != "success"):
+while(adapter.connect(os.getenv("LEGACY_WMS_HOST", "localhost"), int(os.getenv("LEGACY_WMS_PORT", 8000)))["status"] != "success"):
     print("Failed to connect to server, retrying...")
     time.sleep(30)
+
+pubsub_adapter = WMSPubSubAdapter(os.getenv("LEGACY_WMS_HOST", "localhost"), int(os.getenv("LEGACY_WMS_PORT", 8000)))
+listener_thread = Thread(target=pubsub_adapter.listen)
+listener_thread.start()
 
 @wms.get("/disconnect")
 def disconnect_from_server():
