@@ -4,7 +4,24 @@ from adapter import WMSAdapter
 from pubsub_adapter import WMSPubSubAdapter
 from threading import Thread
 import os
+import requests
+import socket
 
+def register_on_service_reg():
+    registry = socket.gethostbyname(os.getenv("SERVICE_REG_HOST", "localhost")) + ":" + str(os.getenv("SERVICE_REG_PORT", 8000))
+    service = socket.gethostbyname(os.getenv("SERVICE_HOST", "localhost")) + ":" + str(os.getenv("SERVICE_PORTT", 8000))
+
+    req = {"name":"wms_adapter","address" : str(service)}
+    r = requests.post("http://" + registry + "/register", json=req)
+    if(r.status_code == 200):
+        print("Registered on the service registery")
+        return True
+    else:
+        print("Failed to register on the service registery")
+        return False
+
+if(register_on_service_reg() != True):
+    exit(-1)
 
 wms = FastAPI()
 adapter = WMSAdapter()
@@ -17,7 +34,6 @@ while(adapter.connect(os.getenv("LEGACY_WMS_HOST", "localhost"), int(os.getenv("
 pubsub_adapter = WMSPubSubAdapter(os.getenv("LEGACY_WMS_HOST", "localhost"), int(os.getenv("LEGACY_WMS_PORT", 8000)))
 listener_thread = Thread(target=pubsub_adapter.listen)
 listener_thread.start()
-
 
 
 @wms.get("/disconnect")

@@ -13,3 +13,8 @@ COPY . .
 EXPOSE 8000
 
 CMD ["fastapi", "run", "api.py", "--host", "0.0.0.0", "--port", "8000"]
+
+RUN apt-get update && apt-get install -y curl
+
+HEALTHCHECK --interval=10s --timeout=3s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1

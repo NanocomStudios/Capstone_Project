@@ -4,6 +4,15 @@ class CMSService:
 
     def __init__(self, registry_url="http://localhost:8500"):
         self.registry_url = registry_url
+        print(registry_url)
+
+    def register_cms_adapter(self, address):
+        req = {"name":"cms_adapter","address" : str(address)}
+        r = requests.post("http://" + self.registry_url + "/register", json=req)
+        if(r.status_code == 200):
+            print("Registered on the service registery")
+        else:
+            print("Failed to register on the service registery")
 
     def _discover_cms(self):
         r = requests.get(f"{self.registry_url}/discover/CMS")

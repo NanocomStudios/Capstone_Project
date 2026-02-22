@@ -1,7 +1,7 @@
 import socket
 from time import time
 import asyncio
-import aio_pika
+import pika
 
 from adapter import WMSAdapter
 
