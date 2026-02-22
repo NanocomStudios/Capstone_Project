@@ -1,5 +1,8 @@
 name: swiftlogistics
 
+volumes:
+  postgres_data:
+
 services:
 
   rabbitmq:
@@ -11,10 +14,11 @@ services:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
     healthcheck:
-      test: rabbitmq-diagnostics check_port_connectivity
-      interval: 1s
-      timeout: 3s
-      retries: 30
+      test: rabbitmq-diagnostics -q ping
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 150s
 
   wms_legacy:
     build: Legacy/wms/.
@@ -30,6 +34,45 @@ services:
       LEGACY_WMS_PORT: "9000"
     depends_on:
       wms_legacy:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: deliverydb
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  ros_legacy:
+    build: Legacy/ros/.
+    ports:
+      - "8003:8000"
+
+  delivery_service:
+    build: Services/delivery_service/.
+    ports:
+      - "8002:8000"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/deliverydb
+      ROS_SERVICE_URL: http://ros_legacy:8000
+      RABBITMQ_HOST: rabbitmq
+    depends_on:
+      db:
+        condition: service_healthy
+      ros_legacy:
         condition: service_started
       rabbitmq:
         condition: service_healthy
