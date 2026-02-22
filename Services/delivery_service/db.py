@@ -7,16 +7,13 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
 # Override with PostgreSQL via DATABASE_URL env var:
 # DATABASE_URL=postgresql://user:password@host:5432/deliverydb
+
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/deliverydb")
-
 engine = create_engine(DATABASE_URL)
-
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
 
 class Base(DeclarativeBase):
     pass
-
 
 class Delivery(Base):
     """Represents a single package delivery assignment to a driver."""
