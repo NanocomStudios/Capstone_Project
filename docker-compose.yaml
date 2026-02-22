@@ -76,12 +76,12 @@ services:
   ros_legacy:
     build: Legacy/ros/.
     ports:
-      - "8003:8000"
+      - "8010:8000"
       
   delivery_service:
     build: Services/delivery_service/.
     ports:
-      - "8002:8000"
+      - "8004:8000"
     environment:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/deliverydb
       ROS_SERVICE_URL: http://ros_legacy:8000
@@ -93,3 +93,6 @@ services:
         condition: service_started
       rabbitmq:
         condition: service_healthy
+
+volumes:
+  postgres_data:
