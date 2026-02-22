@@ -2,6 +2,11 @@ name: swiftlogistics
 
 services:
 
+  service_registry:
+    build: Services/service_registry/.
+    ports:
+      - "8010:8000"
+
   rabbitmq:
     image: rabbitmq:3-management
     ports:
@@ -33,3 +38,5 @@ services:
         condition: service_started
       rabbitmq:
         condition: service_healthy
+      service_registry:
+        condition: service_started

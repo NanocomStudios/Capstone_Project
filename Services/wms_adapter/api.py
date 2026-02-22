@@ -18,6 +18,8 @@ pubsub_adapter = WMSPubSubAdapter(os.getenv("LEGACY_WMS_HOST", "localhost"), int
 listener_thread = Thread(target=pubsub_adapter.listen)
 listener_thread.start()
 
+
+
 @wms.get("/disconnect")
 def disconnect_from_server():
     try:
