@@ -2,11 +2,6 @@ name: swiftlogistics
 
 services:
 
-  service_registry:
-    build: Services/service_registry/.
-    ports:
-      - "8010:8000"
-
   rabbitmq:
     image: rabbitmq:3-management
     ports:
@@ -25,18 +20,39 @@ services:
     build: Legacy/wms/.
     ports:
       - "9000:8000"
-  
+
   wms_adapter:
     build: Services/wms_adapter/.
     ports:
       - "8001:8000"
     environment:
-      LEGACY_WMS_HOST: host.docker.internal # Use host.docker.internal to connect to the host machine's services
+      LEGACY_WMS_HOST: host.docker.internal
       LEGACY_WMS_PORT: "9000"
     depends_on:
       wms_legacy:
         condition: service_started
       rabbitmq:
         condition: service_healthy
+<<<<<<< HEAD
       service_registry:
         condition: service_started
+=======
+
+  cms_legacy:
+    build: Legacy/cms/.
+    ports:
+      - "8002:8000"
+
+  service_registry:
+    build: Services/service_registry/.
+    ports:
+      - "8500:8000"
+
+  cms_adapter:
+    build: Services/cms_adapter/.
+    ports:
+      - "8003:8000"
+    depends_on:
+      - service_registry
+      - cms_legacy
+>>>>>>> 6710ab5f266def8f25b3d4b2ca6b602485d09828
