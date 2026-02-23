@@ -32,6 +32,10 @@ def discover_service(service_name: str):
         
     return {"address": registry[service_name]["address"]}
 
+@app.get("/list")
+def list_services():
+    return {"services": list(registry.keys())}
+
 @app.get("/health")
 def health():
     return {"services_online": list(registry.keys())}

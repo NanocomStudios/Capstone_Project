@@ -2,7 +2,7 @@ name: swiftlogistics
 
 services:
 
-  service_registry:
+  service-registry:
     build: Services/service_registry/.
     ports:
       - "8001:8000"
@@ -21,63 +21,62 @@ services:
       timeout: 3s
       retries: 30
 
-  wms_legacy:
+  wms-legacy:
     build: Legacy/wms/.
     ports:
       - "9000:8000"
 
-  wms_adapter:
+  wms-adapter:
     build: Services/wms_adapter/.
     ports:
       - "8002:8000"
     environment:
-      LEGACY_WMS_HOST: host.docker.internal
-      LEGACY_WMS_PORT: "9000"
-      SERVICE_REG_HOST: host.docker.internal
-      SERVICE_REG_PORT: "8001"
-      SERVICE_HOST: host.docker.internal
-      SERVICE_PORT: "8003"
+      LEGACY_WMS_HOST: wms-legacy
+      LEGACY_WMS_PORT: "8000"
+      SERVICE_REG_HOST: service-registry
+      SERVICE_REG_PORT: "8000"
+      SERVICE_HOST: wms-adapter
+      SERVICE_PORT: "8000"
     depends_on:
-      wms_legacy:
+      wms-legacy:
         condition: service_started
       rabbitmq:
         condition: service_healthy
-      service_registry:
+      service-registry:
         condition: service_healthy
         
-  cms_legacy:
+  cms-legacy:
     build: Legacy/cms/.
     ports:
       - "9001:8000"
 
-  cms_adapter:
+  cms-adapter:
     build: Services/cms_adapter/.
     ports:
       - "8003:8000"
     environment:
-      SERVICE_REG_HOST: host.docker.internal
-      SERVICE_REG_PORT: "8001"
-      SERVICE_HOST: host.docker.internal
-      SERVICE_PORT: "8003"
+      SERVICE_REG_HOST: service-registry
+      SERVICE_REG_PORT: "8000"
+      SERVICE_HOST: cms-adapter
+      SERVICE_PORT: "8000"
     depends_on:
-      service_registry:
+      service-registry:
         condition: service_healthy
-      cms_legacy:
+      cms-legacy:
         condition: service_started
 
-  order_service:
+  order-service:
     build: Services/order_service/.
     ports:
-      - "8010:8000"
+      - "8004:8000"
     environment:
       RABBIT_HOST: rabbitmq
-      CMS_ADAPTER_URL: http://cms_adapter:8000
-      ROS_ADAPTER_URL: http://ros_adapter:8000
-      WMS_ADAPTER_URL: http://wms_adapter:8001
+      CMS_ADAPTER_URL: http://cms-adapter:8000
+      ROS_ADAPTER_URL: http://ros-adapter:8000
+      WMS_ADAPTER_URL: http://wms-adapter:8000
     depends_on:
       rabbitmq:
         condition: service_healthy
-      service_registry:
-        condition: service_started
-    networks:
-      - swiftlogistics-network
+      service-registry:
+        condition: service_healthy
+

@@ -14,13 +14,13 @@ app = FastAPI(title="Order Service")
 orders = {}
 
 #Service URLs
-CMS_ADAPTER_URL = os.getenv("CMS_ADAPTER_URL", "http://cms_adapter:8000")
-ROS_ADAPTER_URL = os.getenv("ROS_ADAPTER_URL", "http://ros_adapter:8000")
-WMS_ADAPTER_URL = os.getenv("WMS_ADAPTER_URL", "http://wms_adapter:8001")
+CMS_ADAPTER_URL = os.getenv("CMS_ADAPTER_URL", "http://cms-adapter:8000")
+ROS_ADAPTER_URL = os.getenv("ROS_ADAPTER_URL", "http://ros-adapter:8000")
+WMS_ADAPTER_URL = os.getenv("WMS_ADAPTER_URL", "http://wms-adapter:8000")
 
 @app.on_event("startup")
 async def startup():
-    await register_service("order_service", "http://order_service:8000")
+    await register_service("order_service", "http://order-service:8000")
     print("Order Service started")
 
 @app.post("/orders", response_model=OrderResponse)

@@ -1,7 +1,7 @@
 import httpx
 import asyncio
 
-REGISTRY_URL = "http://service_registry:8000"
+REGISTRY_URL = "http://service-registry:8000"
 
 async def register_service(name: str, address: str):
     """Register with service registry"""
