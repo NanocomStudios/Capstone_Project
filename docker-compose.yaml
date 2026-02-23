@@ -64,3 +64,20 @@ services:
         condition: service_healthy
       cms_legacy:
         condition: service_started
+
+  order_service:
+    build: Services/order_service/.
+    ports:
+      - "8010:8000"
+    environment:
+      RABBIT_HOST: rabbitmq
+      CMS_ADAPTER_URL: http://cms_adapter:8000
+      ROS_ADAPTER_URL: http://ros_adapter:8000
+      WMS_ADAPTER_URL: http://wms_adapter:8001
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      service_registry:
+        condition: service_started
+    networks:
+      - swiftlogistics-network
