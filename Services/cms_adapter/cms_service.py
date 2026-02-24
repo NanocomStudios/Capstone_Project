@@ -2,12 +2,12 @@ import requests
 
 class CMSService:
 
-    def __init__(self, registry_url="http://localhost:8500"):
+    def __init__(self, registry_url="http://localhost:8001"):
         self.registry_url = registry_url
         print(registry_url)
 
     def register_cms_adapter(self, address):
-        req = {"name":"cms_adapter","address" : str(address)}
+        req = {"name":"cms-adapter","address" : str(address)}
         r = requests.post("http://" + self.registry_url + "/register", json=req)
         if(r.status_code == 200):
             print("Registered on the service registery")

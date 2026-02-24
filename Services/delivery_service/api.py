@@ -11,6 +11,8 @@ Helper endpoints:
 
 import os
 import uuid
+import requests
+import socket
 from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import List, Optional
@@ -24,6 +26,22 @@ from ros_client import ROSClient
 ROS_SERVICE_URL = os.getenv("ROS_SERVICE_URL", "http://localhost:8001")
 
 ros = ROSClient(ROS_SERVICE_URL)
+
+def register_on_service_reg():
+    registry = socket.gethostbyname(os.getenv("SERVICE_REG_HOST", "localhost")) + ":" + str(8000)
+    service = socket.gethostbyname(os.getenv("SERVICE_HOST", "localhost")) + ":" + str(os.getenv("SERVICE_PORT", 8005))
+
+    req = {"name":"delivery-service","address" : str(service)}
+    r = requests.post("http://" + registry + "/register", json=req)
+    if(r.status_code == 200):
+        print("Registered on the service registery")
+        return True
+    else:
+        print("Failed to register on the service registery")
+        return False
+
+if(register_on_service_reg() != True):
+    exit(-1)
 
 
 @asynccontextmanager

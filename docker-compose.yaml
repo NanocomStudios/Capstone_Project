@@ -36,7 +36,7 @@ services:
       SERVICE_REG_HOST: service-registry
       SERVICE_REG_PORT: "8000"
       SERVICE_HOST: wms-adapter
-      SERVICE_PORT: "8000"
+      SERVICE_PORT: "8002"
     depends_on:
       wms-legacy:
         condition: service_started
@@ -56,9 +56,8 @@ services:
       - "8003:8000"
     environment:
       SERVICE_REG_HOST: service-registry
-      SERVICE_REG_PORT: "8000"
       SERVICE_HOST: cms-adapter
-      SERVICE_PORT: "8000"
+      SERVICE_PORT: "8003"
     depends_on:
       service-registry:
         condition: service_healthy
@@ -110,12 +109,17 @@ services:
     environment:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/deliverydb
       ROS_SERVICE_URL: http://ros-legacy:8000
+      SERVICE_REG_HOST: service-registry
+      SERVICE_HOST: delivery-service
+      SERVICE_PORT: "8005"
       RABBITMQ_HOST: rabbitmq
     depends_on:
       db:
         condition: service_healthy
       ros-legacy:
         condition: service_started
+      service-registry:
+        condition: service_healthy
       rabbitmq:
         condition: service_healthy
 

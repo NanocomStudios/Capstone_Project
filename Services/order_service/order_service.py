@@ -20,7 +20,7 @@ WMS_ADAPTER_URL = os.getenv("WMS_ADAPTER_URL", "http://wms-adapter:8000")
 
 @app.on_event("startup")
 async def startup():
-    await register_service("order_service", "http://order-service:8000")
+    await register_service("order-service", "http://order-service:8000")
     print("Order Service started")
 
 @app.post("/orders", response_model=OrderResponse)

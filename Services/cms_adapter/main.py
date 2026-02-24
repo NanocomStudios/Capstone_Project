@@ -6,7 +6,7 @@ import socket
 
 app = FastAPI(title="CMS Adapter")
 
-service = CMSService(socket.gethostbyname(os.getenv("SERVICE_REG_HOST", "localhost"))+ ":" + str(os.getenv("SERVICE_REG_PORT", 8500)))
+service = CMSService(socket.gethostbyname(os.getenv("SERVICE_REG_HOST", "localhost"))+ ":" + str(8000))
 
 service.register_cms_adapter(socket.gethostbyname(os.getenv("SERVICE_HOST", "localhost"))+ ":" + str(os.getenv("SERVICE_PORT", 8000)))
 

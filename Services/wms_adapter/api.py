@@ -8,10 +8,10 @@ import requests
 import socket
 
 def register_on_service_reg():
-    registry = socket.gethostbyname(os.getenv("SERVICE_REG_HOST", "localhost")) + ":" + str(os.getenv("SERVICE_REG_PORT", 8000))
-    service = socket.gethostbyname(os.getenv("SERVICE_HOST", "localhost")) + ":" + str(os.getenv("SERVICE_PORTT", 8000))
+    registry = socket.gethostbyname(os.getenv("SERVICE_REG_HOST", "localhost")) + ":" + str(os.getenv("SERVICE_REG_PORT", 8001))
+    service = socket.gethostbyname(os.getenv("SERVICE_HOST", "localhost")) + ":" + str(os.getenv("SERVICE_PORT", 8002))
 
-    req = {"name":"wms_adapter","address" : str(service)}
+    req = {"name":"wms-adapter","address" : str(service)}
     r = requests.post("http://" + registry + "/register", json=req)
     if(r.status_code == 200):
         print("Registered on the service registery")
