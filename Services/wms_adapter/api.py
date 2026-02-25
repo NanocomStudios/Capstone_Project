@@ -8,7 +8,7 @@ import requests
 import socket
 
 def register_on_service_reg():
-    registry = socket.gethostbyname(os.getenv("SERVICE_REG_HOST", "localhost")) + ":" + str(os.getenv("SERVICE_REG_PORT", 8001))
+    registry = socket.gethostbyname(os.getenv("SERVICE_REG_HOST", "localhost")) + ":" + str(8000)
     service = socket.gethostbyname(os.getenv("SERVICE_HOST", "localhost")) + ":" + str(os.getenv("SERVICE_PORT", 8002))
 
     req = {"name":"wms-adapter","address" : str(service)}

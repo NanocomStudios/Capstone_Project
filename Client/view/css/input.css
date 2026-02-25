@@ -1,0 +1,255 @@
+:root{
+    --white : #FFFFFF;
+    --gray : #f3f3f3;
+    --darkgray : #585858;
+    --1 : #cbe5ff;
+    --2 : #65a0db;
+    --3 : #1976d2;
+    --4 :	#2c5aa0;
+    --5 : #1e3a5f;
+    --blue : var(--3);
+    --green : #388e3c;
+    --orange : #f57c00;
+    --red : #c2185b;
+
+    --success:#28a745;
+    --success-hover : #218838;
+    --danger : #dc3545;
+    --danger-hover : #c82333;
+
+    --black : #000000;
+}
+
+.input-card{
+    position:relative;
+    width:100%;
+}
+
+.input{
+    display:block;
+    padding: 1rem;
+    width: 100%;
+    transition-duration: 0.2s;
+    border-radius: 0.4rem;
+    border-width: 1px;
+    border-style: solid;
+    font-size: 1rem;
+    padding-left:1rem; 
+    padding-right:2.2rem;
+    box-sizing: border-box;
+}
+
+.input-card .input-label{
+    
+    color:var(--darkgray);
+    font-size: 1rem;
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+
+    pointer-events: none; /* Allows clicks to pass through to the input */
+    transition: transform 0.2s ease-out, font-size 0.2s ease-out; /* Smooth transition */
+    transform-origin: 0 0;
+    display: flex;
+    align-items: center; /* Vertically center the label */
+}
+
+.input-label{
+    font-size: 1rem;
+}
+
+.input-card .input-option{
+    
+    font-size: 1rem;
+    position: absolute;
+    top: 0.85rem;
+    right: 0.5rem;
+    height:1.5rem;
+    width:1.5rem;
+    background-size: cover;
+    background-color: transparent;
+    border: none;
+    transition: 0.1s;
+}
+
+.input-card .input-option-password{
+    background-image: url("icons/eye-close.svg");
+}
+
+.input-card .input-option-email{
+    background-image: url("icons/email.svg");
+}
+
+.input-card .input-option-tel{
+    background-image: url("icons/phone.svg");
+}
+
+.input-card .input-option-number{
+    background-image: url("icons/123.svg");
+}
+
+.input-card .input-option-search{
+    background-image: url("icons/search.svg");
+}
+
+.input-card .input-option-url{
+    background-image: url("icons/web.svg");
+}
+
+.input-card .input-label img{
+    height:1.5rem;
+    width:1.5rem;
+}
+
+.input-card .input:focus{
+    box-shadow: 0 0 0 0.1rem var(--3);
+    border-color: var(--3);
+    outline: none;
+}
+
+.input-card .input:focus ~ .input-label{
+    color : var(--3);
+}
+
+.input-card .input:focus ~ .input-label,
+.input-card .input:not(:placeholder-shown) ~ .input-label{
+    transform: translateY(-1.85rem) scale(0.85); /* Move up and shrink */
+    background-color:white;
+    font-size: 0.85em; /* Adjust font size */
+    padding-top: 0.5rem; /* Adjust padding for better visual alignment */
+}
+
+.input-button{
+    padding:1rem;
+    background-color: var(--4);
+    color:var(--white);
+    border-radius: 0.4rem;
+    border-style: solid;
+    border-width: 2px;
+    border-color: var(--4);
+    transition: 0.2s;
+    font-size: 1rem;
+    cursor: pointer;
+    width:100%;
+}
+
+.input-button:hover{
+    background-color: var(--1);
+    color:var(--5);
+}
+
+.red-button{
+    background-color: var(--danger);
+    border-color: var(--danger);
+}
+
+.red-button:hover{
+    background-color: var(--danger-hover);
+    border-color: var(--danger-hover);
+    color:var(--white);
+}
+
+.green-button{
+    background-color: var(--success);
+    border-color: var(--success);
+}
+
+.green-button:hover{
+    background-color: var(--success-hover);
+    border-color: var(--success-hover);
+    color:var(--white);
+}
+
+
+.checkbox-card{
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: stretch;
+    
+}
+.input-checkbox{
+    margin-right: 1rem;
+}
+
+.width-full{
+    width:100%;
+}
+
+.switch-box {
+  width : 2rem;
+  height : 2rem;
+  position:relative;
+  right:0px;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-content: center;
+  
+}
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+  height: 56%;
+}
+
+.switch input { 
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  -webkit-transition: .2s;
+  transition: .2s;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 76%;
+  width: 43%;
+  left: 6.66%;
+  bottom: 12%;
+  background-color: white;
+  -webkit-transition: .2s;
+  transition: .2s;
+}
+
+input:checked + .slider {
+  background-color: var(--3);
+}
+
+/* input:focus + .slider {
+  box-shadow: 0 0 1px #2196F3;
+} */
+
+input:checked + .slider:before {
+  -webkit-transform: translateX(100%);
+  -ms-transform: translateX(100%);
+  transform: translateX(100%);
+}
+
+/* Rounded sliders */
+.slider.round {
+  border-radius: 2.1rem;
+}
+
+.slider.round:before {
+  border-radius: 50%;
+}
+
+.checkbox-label{
+    font-size: 1rem;
+    color: var(--black);
+    user-select: none;
+    margin-left: 0.5rem;
+    justify-self: start;
+}

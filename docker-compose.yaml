@@ -123,5 +123,36 @@ services:
       rabbitmq:
         condition: service_healthy
 
+  auth-service:
+    build: Services/auth_service/.
+    ports:
+      - "8006:8000"
+    environment:
+      SERVICE_REG_HOST: service-registry
+      SERVICE_HOST: auth-service
+      SERVICE_PORT: "8006"
+    depends_on:
+      service-registry:
+        condition: service_healthy
+
+  client-app:
+    build: Client/.
+    ports:
+      - "8000:80"
+
+    depends_on:
+      # service-registry:
+      #   condition: service_healthy
+      # wms-adapter:
+      #   condition: service_healthy
+      # cms-adapter:
+      #   condition: service_healthy
+      # order-service:
+      #   condition: service_healthy
+      # delivery-service:
+      #   condition: service_healthy
+      auth-service:
+        condition: service_healthy
+
 volumes:
   postgres_data:

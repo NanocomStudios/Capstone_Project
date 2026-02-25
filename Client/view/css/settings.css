@@ -1,0 +1,34 @@
+.settings-section{
+    display: flex;
+    flex-direction: column;
+    margin:1rem;
+    width:100%;
+}
+
+.settings-subsection{
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+}
+
+.settings-card{
+    width: 15rem;
+    margin:1rem;
+}
+
+.settings-card-short{
+    width: 7.5rem;
+    margin:1rem;
+}
+
+.settings-card-long{
+    width:45%;
+    margin:1rem;
+    min-width: 30rem;
+}
+
+.settings-card-xlong{
+    width:100%;
+    margin:1rem;
+    min-width:30rem;
+}
