@@ -1,5 +1,8 @@
 <?php
 require_once("navbar.php");
+require_once("input.php");
+require_once("table.php");
+require_once("cardGrid.php");
 class DashboardHeader{
     public function render(){
         global $deviceType;
@@ -44,7 +47,7 @@ class DashboardHeader{
         //     $nav->addItem(new NavLink('?action=login', 'Login'));
         //     $nav->addItem(new NavLink('?action=register', 'Register', 'active'));
         // }
-
+        $nav->addItem(new NavLink('/logout.php', 'Logout', 'active'));
         $nav->render();
     }
 
@@ -157,8 +160,8 @@ class OtherObject{
 
 class PopupOverlay{
     public function render(){
-        echo '<link rel="stylesheet" type="text/css" href="'.ROOT.'/view/html/css/common/popup.css">';
-        echo '<script src="'.ROOT.'/view/html/js/popup.js"></script>';
+        echo '<link rel="stylesheet" type="text/css" href="'.ROOT.'/view/css/popup.css">';
+        echo '<script src="'.ROOT.'/view/js/popup.js"></script>';
         echo '<div class="popup-overlay" id="popupOverlay"></div>';
     }
 }
@@ -181,8 +184,8 @@ class CalendarView{
         $this->action = $action;
     }
     public function render(){
-        echo "<link rel=\"stylesheet\" type=\"text/css\" href='".ROOT."/view/html/css/common/calendar.css'>";
-        echo "<script src='".ROOT."/view/html/js/calendar.js'></script>";
+        echo "<link rel=\"stylesheet\" type=\"text/css\" href='".ROOT."/view/css/calendar.css'>";
+        echo "<script src='".ROOT."/view/js/calendar.js'></script>";
 
         echo "<div class='calendar-container'>
 

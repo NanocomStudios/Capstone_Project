@@ -18,6 +18,8 @@ c.execute("CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, password
 c.execute("CREATE TABLE IF NOT EXISTS sessions (session_id TEXT PRIMARY KEY, username TEXT, FOREIGN KEY(username) REFERENCES users(username))")
 
 c.execute("INSERT OR IGNORE INTO users (username, password, role) VALUES ('bhanuka', '123', 'client')")
+c.execute("INSERT OR IGNORE INTO users (username, password, role) VALUES ('anuk', '123', 'warehouse')")
+c.execute("INSERT OR IGNORE INTO users (username, password, role) VALUES ('nadin', '123', 'driver')")
 conn.commit()
 conn.close()
 

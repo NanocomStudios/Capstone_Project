@@ -15,7 +15,6 @@ class OrderItem(BaseModel):
 class OrderRequest(BaseModel):
     client_id: str
     delivery_address: str
-    items: List[OrderItem]
 
 class OrderResponse(BaseModel):
     order_id: str
@@ -28,9 +27,4 @@ class OrderStatusDetail(BaseModel):
     status: OrderStatus
     client_id: str
     delivery_address: str
-    items: List[Dict[str, Any]]
-    created_at: str
-    updated_at: str
-    events: List[Dict[str, Any]]
-    estimated_delivery: Optional[str] = None
-    error: Optional[str] = None
+    customer_name: str

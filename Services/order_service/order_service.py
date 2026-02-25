@@ -34,7 +34,6 @@ async def create_order(order: OrderRequest, background_tasks: BackgroundTasks):
         "status": OrderStatus.RECEIVED,
         "client_id": order.client_id,
         "delivery_address": order.delivery_address,
-        "items": [item.dict() for item in order.items],
         "created_at": datetime.now().isoformat(),
         "updated_at": datetime.now().isoformat(),
         "events": [
@@ -69,7 +68,6 @@ async def get_order_status(order_id: str):
         status=order["status"],
         client_id=order["client_id"],
         delivery_address=order["delivery_address"],
-        items=order["items"],
         created_at=order["created_at"],
         updated_at=order["updated_at"],
         events=order.get("events", []),
