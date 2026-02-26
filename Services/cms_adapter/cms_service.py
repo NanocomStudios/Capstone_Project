@@ -1,4 +1,7 @@
 import requests
+import xmltodict
+
+import os
 
 class CMSService:
 
@@ -14,24 +17,25 @@ class CMSService:
         else:
             print("Failed to register on the service registery")
 
-    def _discover_cms(self):
-        r = requests.get(f"{self.registry_url}/discover/CMS")
-        r.raise_for_status()
-        return r.json()["address"]
+    # def _discover_cms(self):
+    #     r = requests.get(f"{self.registry_url}/discover/CMS")
+    #     r.raise_for_status()
+    #     return r.json()["address"]
 
     def _send_request(self, xml_body):
-        base_url = self._discover_cms()
+        base_url = os.getenv("LEGACY_CMS_HOST", "localhost") + ":8000"
 
         headers = {"Content-Type": "application/xml"}
 
         response = requests.post(
-            f"{base_url}/soap",
+            f"http://{base_url}/soap",
             data=xml_body,
             headers=headers
         )
 
         response.raise_for_status()
-        return response.text
+        ordered_dict = xmltodict.parse(response.text)
+        return dict(ordered_dict["Response"])
 
     def login(self, username, password):
         xml_body = f"""
@@ -39,6 +43,19 @@ class CMSService:
             <Action>login</Action>
             <Username>{username}</Username>
             <Password>{password}</Password>
+        </Request>
+        """
+        return self._send_request(xml_body)
+
+    def new_order(self, order):
+        xml_body = f"""
+        <Request>
+            <Action>newOrder</Action>
+            <OrderID>{order["order_id"]}</OrderID>
+            <PackageID>{order["package_id"]}</PackageID>
+            <ClientID>{order["client_id"]}</ClientID>
+            <Address>{order["delivery_address"]}</Address>
+            <CustomerName>{order["customer_name"]}</CustomerName>
         </Request>
         """
         return self._send_request(xml_body)
@@ -55,7 +72,7 @@ class CMSService:
         xml_body = f"""
         <Request>
             <Action>orderStatus</Action>
-            <OrderId>{order_id}</OrderId>
+            <OrderID>{order_id}</OrderID>
         </Request>
         """
         return self._send_request(xml_body)

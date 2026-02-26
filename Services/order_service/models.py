@@ -15,6 +15,7 @@ class OrderItem(BaseModel):
 class OrderRequest(BaseModel):
     client_id: str
     delivery_address: str
+    customer_name: str
 
 class OrderResponse(BaseModel):
     order_id: str

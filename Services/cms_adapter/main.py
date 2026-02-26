@@ -19,6 +19,10 @@ class LoginRequest(BaseModel):
 def login(req: LoginRequest):
     return service.login(req.username, req.password)
 
+@app.post("/new_order")
+def new_order(order: dict):
+    return service.new_order(order)
+
 @app.get("/orders")
 def view_orders():
     return service.view_orders()

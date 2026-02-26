@@ -8,7 +8,7 @@ WORKDIR /app
 
 COPY . /app
 
-RUN pip install --no-cache-dir fastapi uvicorn requests pydantic
+RUN pip install --no-cache-dir fastapi uvicorn requests pydantic xmltodict
 
 EXPOSE 8000
 
