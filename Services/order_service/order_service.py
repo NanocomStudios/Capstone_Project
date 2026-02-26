@@ -17,6 +17,8 @@ orders = {}
 CMS_ADAPTER_URL = os.getenv("CMS_ADAPTER_URL", "http://cms-adapter:8000")
 ROS_ADAPTER_URL = os.getenv("ROS_ADAPTER_URL", "http://ros-adapter:8000")
 WMS_ADAPTER_URL = os.getenv("WMS_ADAPTER_URL", "http://wms-adapter:8000")
+AUTH_SERVICE_URL = os.getenv("AUTH_SERVICE_URL", "http://auth-service:8000")
+DELIVERY_SERVICE_URL = os.getenv("DELIVERY_SERVICE_URL", "http://delivery-service:8000")
 
 # @app.on_event("startup")
 # async def startup():
@@ -76,6 +78,53 @@ async def get_client_orders(client_id: str):
         "total_orders": len(client_orders),
         "orders": client_orders
     }
+
+@app.post("/pack")
+async def pack_order(order_id: str):
+    order_info = httpx.get(f"{CMS_ADAPTER_URL}/orders/{order_id}", timeout=5)
+    if order_info.status_code != 200:
+        return {"response": "Failed to retrieve order info from CMS"}
+    order_data = order_info.json()
+    print(order_data)
+    package_id = order_data.get("Order").get("PackageID")
+
+    wms_response = httpx.get(f"{WMS_ADAPTER_URL}/pack/{package_id}", timeout=5)
+    if wms_response.status_code != 200:
+        return {"response": "Failed to pack order in WMS"}
+    
+    return {"response": "Order packed successfully"}
+
+@app.post("/ship")
+async def ship_order(order_id: str):
+    order_info = httpx.get(f"{CMS_ADAPTER_URL}/orders/{order_id}", timeout=5)
+    if order_info.status_code != 200:
+        return {"response": "Failed to retrieve order info from CMS"}
+    order_data = order_info.json()
+    package_id = order_data.get("Order").get("PackageID")
+    delivery_address = order_data.get("Order").get("Address")
+
+    wms_response = httpx.get(f"{WMS_ADAPTER_URL}/ship/{package_id}", timeout=5)
+    if wms_response.status_code != 200:
+        return {"response": "Failed to ship order in WMS"}
+    
+    driver_response = httpx.get(f"{AUTH_SERVICE_URL}/select_driver", timeout=5)
+    if driver_response.status_code != 200:
+        return {"response": "Failed to select driver"}
+    
+    driver_data = driver_response.json()
+    driver_id = driver_data.get("driver")
+
+    delivery_response = httpx.post(f"{DELIVERY_SERVICE_URL}/deliveries/assign", json={
+        "order_id": order_id,
+        "driver_id": driver_id,
+        "package_id": package_id,
+        "delivery_address": delivery_address
+    }, timeout=5)
+
+    if delivery_response.status_code != 200:
+        return {"response": "Failed to assign driver to delivery"}
+
+    return {"response": "Order shipped successfully"}
 
 def process_order(order_id: str, order: OrderRequest):
     """Process order through all systems"""

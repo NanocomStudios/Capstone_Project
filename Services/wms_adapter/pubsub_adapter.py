@@ -2,6 +2,7 @@ import socket
 from time import time
 import asyncio
 import pika
+import os
 
 from adapter import WMSAdapter
 
@@ -13,16 +14,13 @@ class WMSPubSubAdapter:
         while(self.wmsAdapter.connect(host, port)["status"] != "success"):
             print("Failed to connect the listner, retrying...")
             time.sleep(30)
-
+    
         self.s = self.wmsAdapter.s
     
     def listen(self):
         if self.s is None:
             return {"response": "Not connected to server"}
         
-        pika_connection = pika.BlockingConnection(pika.ConnectionParameters(host=self.host))
-        channel = pika_connection.channel()
-        channel.exchange_declare(exchange='wms_updates', exchange_type='fanout')
 
         self.s.send("listen\n".encode('ascii'))
         response = self.recvAll(self.s)
@@ -32,7 +30,12 @@ class WMSPubSubAdapter:
             response = self.recvAll(self.s)
             message = self.ssvToDict(response)
             print("Received update from server:", message)
-            channel.basic_publish(exchange='wms_updates', routing_key='', body=str(message))
+            
+            connection = pika.BlockingConnection(pika.ConnectionParameters(host=os.getenv("RABBITMQ_HOST", "localhost")))
+            channel = connection.channel()
+            channel.exchange_declare(exchange='wms', exchange_type='fanout')
+            channel.basic_publish(exchange='wms', routing_key='', body=str(message))
+            connection.close()
 
     def recvAll(self, sock):
         data = b""

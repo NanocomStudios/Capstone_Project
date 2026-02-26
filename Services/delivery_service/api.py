@@ -86,7 +86,7 @@ def health_check():
     return {"status": "UP", "service": "delivery-service"}
 
 
-@app.post("/deliveries/assign", status_code=201)
+@app.post("/deliveries/assign", status_code=200)
 def assign_delivery(req: AssignDeliveryRequest):
     """
     Assign an order/package to a driver.

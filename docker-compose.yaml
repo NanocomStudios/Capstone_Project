@@ -37,6 +37,7 @@ services:
       SERVICE_REG_PORT: "8000"
       SERVICE_HOST: wms-adapter
       SERVICE_PORT: "8002"
+      RABBITMQ_HOST: rabbitmq
     depends_on:
       wms-legacy:
         condition: service_started
@@ -74,6 +75,9 @@ services:
       CMS_ADAPTER_URL: http://cms-adapter:8000
       ROS_ADAPTER_URL: http://ros-adapter:8000
       WMS_ADAPTER_URL: http://wms-adapter:8000
+      SERVICE_REG_HOST: service-registry
+      AUTH_SERVICE_URL: http://auth-service:8000
+      DELIVERY_SERVICE_HOST: http://delivery-service:8000
     depends_on:
       rabbitmq:
         condition: service_healthy

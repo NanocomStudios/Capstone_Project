@@ -19,7 +19,10 @@ c.execute("CREATE TABLE IF NOT EXISTS sessions (session_id TEXT PRIMARY KEY, use
 
 c.execute("INSERT OR IGNORE INTO users (username, password, role) VALUES ('bhanuka', '123', 'client')")
 c.execute("INSERT OR IGNORE INTO users (username, password, role) VALUES ('anuk', '123', 'warehouse')")
+c.execute("INSERT OR IGNORE INTO users (username, password, role) VALUES ('thenuka', '123', 'driver')")
 c.execute("INSERT OR IGNORE INTO users (username, password, role) VALUES ('nadin', '123', 'driver')")
+c.execute("INSERT OR IGNORE INTO users (username, password, role) VALUES ('kavindu', '123', 'warehouse')")
+c.execute("INSERT OR IGNORE INTO users (username, password, role) VALUES ('dulara', '123', 'warehouse')")
 conn.commit()
 conn.close()
 
@@ -107,3 +110,17 @@ def register(user: NewUser):
 @app.get("/health")
 def health():
     return {"status": "healthy"}
+
+@app.get("/select_driver")
+def driver():
+    conn = sqlite3.connect('users.db')
+    c = conn.cursor()
+
+    try:
+        c.execute("SELECT username FROM users WHERE role='driver' ORDER BY RANDOM() LIMIT 1")
+        result = c.fetchall()
+        conn.close()
+        return {"driver": result[0][0]} if result else {"driver": None}
+    except Exception as e:
+        conn.close()
+        return {"error": str(e)}
