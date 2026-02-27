@@ -10,6 +10,7 @@ $dashboardView = new DashboardView();
 
 echo '<script>let sections = ["orderedSection", "deliverySection"];</script>';
 echo '<script>let user = "'.$_COOKIE['uname'].'";</script>';
+echo '<script src="view/js/client.js"></script>';
 
 $section = new StatsCardSection();
 $statCard = new StatsCard("", "onclick='showSection(\"orderedSection\")' style='cursor:pointer;'");
@@ -47,6 +48,7 @@ $table = new Table("orderTable");
 
 $tr = new TableRow();
 $tr->addCol(new TableCol("Order ID"));
+$tr->addCol(new TableCol("Customer"));
 $tr->addCol(new TableCol("Address"));
 $tr->addCol(new TableCol("Status"));
 

@@ -20,6 +20,8 @@ from typing import List, Optional
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
+from fastapi.middleware.cors import CORSMiddleware
+
 from db import Base, Delivery, DeliveryFeedback, SessionLocal, engine
 from ros_client import ROSClient
 
@@ -50,6 +52,14 @@ async def lifespan(_app: FastAPI):
     yield
 
 app = FastAPI(title="SwiftLogistics Delivery Service", lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:8000"], # Your frontend URL
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 class Stop(BaseModel):
     address: str

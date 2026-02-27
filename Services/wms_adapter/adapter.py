@@ -36,21 +36,30 @@ class WMSAdapter:
             return {"response": "Not connected to server"}
         self.s.send(f"pack {item_id}\n".encode('ascii'))
         response = self.recvAll(self.s)
-        return self.ssvToDict(response)
+        r_dict = self.ssvToDict(response)
+        if("error" in r_dict["response"][0].keys()):
+            raise Exception(r_dict["response"][0]["error"], status_code=400)
+        return r_dict
 
     def ship_item(self, item_id: int):
         if self.s is None:
             return {"response": "Not connected to server"}
         self.s.send(f"ship {item_id}\n".encode('ascii'))
         response = self.recvAll(self.s)
-        return self.ssvToDict(response)
+        r_dict = self.ssvToDict(response)
+        if("error" in r_dict["response"][0].keys()):
+            raise Exception(r_dict["response"][0]["error"], status_code=400)
+        return r_dict
 
     def get_item_state(self, item_id: int):
         if self.s is None:
             return {"response": "Not connected to server"}
         self.s.send(f"state {item_id}\n".encode('ascii'))
         response = self.recvAll(self.s)
-        return self.ssvToDict(response)
+        r_dict = self.ssvToDict(response)
+        if("error" in r_dict["response"][0].keys()):
+            raise Exception(r_dict["response"][0]["error"], status_code=400)
+        return r_dict
     
     def list_items(self):
         if self.s is None:

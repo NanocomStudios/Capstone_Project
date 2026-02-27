@@ -1,14 +1,38 @@
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from models import OrderRequest, OrderResponse, OrderStatus, OrderStatusDetail
-from publisher import publish
+from Lib.publisher import consume, publish
 from registry_client import register_service
 from uuid import uuid4
 from datetime import datetime
+from threading import Thread
 import httpx
 import asyncio
 import os
+from fastapi.middleware.cors import CORSMiddleware
+
+wms_add_queue = []
+def wms_add_listener():
+    while True:
+        def callback(message):
+            order_id = message.get("order_id")
+            if(order_id in wms_add_queue):
+                wms_add_queue.remove(order_id)
+                response = message.get("response")
+                print(f"Received WMS add response for order {order_id}: {response}")
+        consume("wms_add_response", callback)
+
+Thread(target=wms_add_listener).start()
+
 
 app = FastAPI(title="Order Service")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:8000"], # Your frontend URL
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 #Store orders with more details
 orders = {}
@@ -126,6 +150,7 @@ async def ship_order(order_id: str):
 
     return {"response": "Order shipped successfully"}
 
+
 def process_order(order_id: str, order: OrderRequest):
     """Process order through all systems"""
     try:
@@ -149,11 +174,14 @@ def process_order(order_id: str, order: OrderRequest):
         # async with httpx.AsyncClient() as client:
             # for item in order.items:
             #     for i in range(item.quantity):
-        wms_response = httpx.get(f"{WMS_ADAPTER_URL}/add", timeout=5)
-        if wms_response.status_code != 200:
-            raise Exception("WMS failed")
+        wms_add_queue.append(order_id)
+        publish("wms_add_request", {"order_id": order_id});
+
+        # wms_response = httpx.get(f"{WMS_ADAPTER_URL}/add", timeout=5)
+        # if wms_response.status_code != 200:
+        #     raise Exception("WMS failed")
         
-        package_id = wms_response.json().get("response")[0]["added"]
+        # package_id = wms_response.json().get("response")[0]["added"]
         
         
         cms_resopnse = httpx.post(f"{CMS_ADAPTER_URL}/new_order", json={
@@ -215,6 +243,9 @@ def process_order(order_id: str, order: OrderRequest):
         #     })
         
         print(f"Order {order_id} failed: {e}")
+
+# def wms_add_request_listener():
+
 
 async def update_order_status(order_id: str, status: OrderStatus, description: str):
     """Helper to update order status and add event"""

@@ -77,11 +77,20 @@ class CMSService:
         """
         return self._send_request(xml_body)
 
+    def client_orders(self, client_id):
+        xml_body = f"""
+        <Request>
+            <Action>clientOrders</Action>
+            <ClientID>{client_id}</ClientID>
+        </Request>
+        """
+        return self._send_request(xml_body)
+
     def view_bill(self, order_id):
         xml_body = f"""
         <Request>
             <Action>viewBill</Action>
-            <OrderId>{order_id}</OrderId>
+            <OrderID>{order_id}</OrderID>
         </Request>
         """
         return self._send_request(xml_body)

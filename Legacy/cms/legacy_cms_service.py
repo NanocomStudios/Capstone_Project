@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import Response
 import xml.etree.ElementTree as ET
 import sqlite3
+import random
 
 conn = sqlite3.connect('users.db')
 
@@ -13,7 +14,7 @@ c.execute("INSERT OR IGNORE INTO users (username, role) VALUES ('thenuka', 'driv
 c.execute("INSERT OR IGNORE INTO users (username, role) VALUES ('nadin', 'driver')")
 c.execute("INSERT OR IGNORE INTO users (username, role) VALUES ('kavindu', 'warehouse')")
 c.execute("INSERT OR IGNORE INTO users (username, role) VALUES ('dulara', 'warehouse')")
-c.execute("CREATE TABLE IF NOT EXISTS orders (order_id TEXT PRIMARY KEY, package_id TEXT, client_id TEXT, delivery_address TEXT, customer_name TEXT, FOREIGN KEY(client_id) REFERENCES users(username))")
+c.execute("CREATE TABLE IF NOT EXISTS orders (order_id TEXT PRIMARY KEY, package_id TEXT, client_id TEXT, delivery_address TEXT, customer_name TEXT,bill REAL, FOREIGN KEY(client_id) REFERENCES users(username))")
 conn.commit()
 conn.close()
 
@@ -45,7 +46,7 @@ async def handle_request(request: Request):
 
         conn = sqlite3.connect('users.db')
         c = conn.cursor()
-        c.execute("INSERT OR REPLACE INTO orders VALUES (?, ?, ?, ?, ?)", (order_id, package_id, client_id, address, customer_name))
+        c.execute("INSERT OR REPLACE INTO orders VALUES (?, ?, ?, ?, ?, ?)", (order_id, package_id, client_id, address, customer_name, random.randint(250, 1200)))
         conn.commit()
         conn.close()
         response_xml = f"""
@@ -58,7 +59,7 @@ async def handle_request(request: Request):
         conn = sqlite3.connect('users.db')
         c = conn.cursor()
 
-        c.execute("SELECT order_id, package_id, client_id, delivery_address, customer_name FROM orders")
+        c.execute("SELECT order_id, package_id, client_id, delivery_address, customer_name, bill FROM orders")
         orders = c.fetchall()
 
         orders_xml = ""
@@ -70,6 +71,7 @@ async def handle_request(request: Request):
                 <ClientID>{order[2]}</ClientID>
                 <Address>{order[3]}</Address>
                 <CustomerName>{order[4]}</CustomerName>
+                <Bill>{order[5]}</Bill>
             </Order>
             """
         response_xml = f"""
@@ -80,13 +82,13 @@ async def handle_request(request: Request):
         conn.close()
 
 
-    elif action == "orderStatus":
-        order_id = root.find("OrderID").text
+    elif action == "clientOrders":
+        client_id = root.find("ClientID").text
 
         conn = sqlite3.connect('users.db')
         c = conn.cursor()
 
-        c.execute("SELECT order_id, package_id, client_id, delivery_address, customer_name FROM orders WHERE order_id = ?", (order_id,))
+        c.execute("SELECT order_id, package_id, client_id, delivery_address, customer_name, bill FROM orders WHERE client_id = ?", (client_id,))
         orders = c.fetchall()
 
         orders_xml = ""
@@ -98,6 +100,35 @@ async def handle_request(request: Request):
                 <ClientID>{order[2]}</ClientID>
                 <Address>{order[3]}</Address>
                 <CustomerName>{order[4]}</CustomerName>
+                <Bill>{order[5]}</Bill>
+            </Order>
+            """
+        response_xml = f"""
+        <Response>
+            {orders_xml}
+        </Response>
+        """
+        conn.close()
+
+    elif action == "orderStatus":
+        order_id = root.find("OrderID").text
+
+        conn = sqlite3.connect('users.db')
+        c = conn.cursor()
+
+        c.execute("SELECT order_id, package_id, client_id, delivery_address, customer_name, bill FROM orders WHERE order_id = ?", (order_id,))
+        orders = c.fetchall()
+
+        orders_xml = ""
+        for order in orders:
+            orders_xml += f"""
+            <Order>
+                <OrderID>{order[0]}</OrderID>
+                <PackageID>{order[1]}</PackageID>
+                <ClientID>{order[2]}</ClientID>
+                <Address>{order[3]}</Address>
+                <CustomerName>{order[4]}</CustomerName>
+                <Bill>{order[5]}</Bill>
             </Order>
             """
         response_xml = f"""

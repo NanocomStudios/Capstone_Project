@@ -1,11 +1,26 @@
 import time
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from adapter import WMSAdapter
 from pubsub_adapter import WMSPubSubAdapter
+from Lib.publisher import consume, publish
 from threading import Thread
 import os
 import requests
 import socket
+
+adapter = WMSAdapter()
+
+def wms_add_listener():
+    
+    while True:
+        def callback(message):
+            order_id = message.get("order_id")
+            response = adapter.add_item()
+            publish("wms_add_response", {"order_id": order_id, "response": response})
+
+        consume("wms_add_request", callback)
+
+Thread(target=wms_add_listener).start()
 
 def register_on_service_reg():
     registry = socket.gethostbyname(os.getenv("SERVICE_REG_HOST", "localhost")) + ":" + str(8000)
@@ -24,7 +39,7 @@ if(register_on_service_reg() != True):
     exit(-1)
 
 wms = FastAPI()
-adapter = WMSAdapter()
+
 print(os.getenv("LEGACY_WMS_HOST", "localhost"), os.getenv("LEGACY_WMS_PORT", 8000))
 
 while(adapter.connect(os.getenv("LEGACY_WMS_HOST", "localhost"), int(os.getenv("LEGACY_WMS_PORT", 8000)))["status"] != "success"):
@@ -41,7 +56,7 @@ def disconnect_from_server():
     try:
         return adapter.disconnect()
     except Exception as e:
-        return {"response": f"Error", "error": str(e)}
+        raise HTTPException(status_code=500, detail=str(e))
     
 
 @wms.get("/add")
@@ -49,35 +64,35 @@ def add_item():
     try:
         return adapter.add_item()
     except Exception as e:
-        return {"response": f"Error", "error": str(e)}
+        raise HTTPException(status_code=500, detail=str(e))
 
 @wms.get("/pack/{item_id}")
 def pack_item(item_id: int):
     try:
         return adapter.pack_item(item_id)
     except Exception as e:
-        return {"response": f"Error", "error": str(e)}
+        raise HTTPException(status_code=400, detail=str(e))
 
 @wms.get("/ship/{item_id}")
 def ship_item(item_id: int):
     try:
         return adapter.ship_item(item_id)
     except Exception as e:
-        return {"response": f"Error", "error": str(e)}
+        raise HTTPException(status_code=400, detail=str(e))
 
 @wms.get("/state/{item_id}")
 def get_item_state(item_id: int):
     try:
         return adapter.get_item_state(item_id)
     except Exception as e:
-        return {"response": f"Error", "error": str(e)}
+        raise HTTPException(status_code=400, detail=str(e))
 
 @wms.get("/list")
 def list_items():
     try:
         return adapter.list_items()
     except Exception as e:
-        return {"response": f"Error", "error": str(e)}
+        raise HTTPException(status_code=500, detail=str(e))
     
 @wms.get("/health")
 def health_check():

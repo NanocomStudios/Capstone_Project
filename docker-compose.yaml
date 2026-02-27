@@ -3,7 +3,9 @@ name: swiftlogistics
 services:
 
   service-registry:
-    build: Services/service_registry/.
+    build:
+      context: .
+      dockerfile: Services/service_registry/Dockerfile
     ports:
       - "8001:8000"
 
@@ -27,7 +29,9 @@ services:
       - "9000:8000"
 
   wms-adapter:
-    build: Services/wms_adapter/.
+    build:
+      context: .
+      dockerfile: Services/wms_adapter/Dockerfile
     ports:
       - "8002:8000"
     environment:
@@ -52,7 +56,9 @@ services:
       - "9001:8000"
 
   cms-adapter:
-    build: Services/cms_adapter/.
+    build:
+      context: .
+      dockerfile: Services/cms_adapter/Dockerfile
     ports:
       - "8003:8000"
     environment:
@@ -67,7 +73,9 @@ services:
         condition: service_started
 
   order-service:
-    build: Services/order_service/.
+    build:
+      context: .
+      dockerfile: Services/order_service/dockerfile
     ports:
       - "8004:8000"
     environment:
@@ -108,7 +116,9 @@ services:
       - "9002:8000"
       
   delivery-service:
-    build: Services/delivery_service/.
+    build:
+      context: .
+      dockerfile: Services/delivery_service/Dockerfile
     ports:
       - "8005:8000"
     environment:
@@ -129,7 +139,9 @@ services:
         condition: service_healthy
 
   auth-service:
-    build: Services/auth_service/.
+    build:
+      context: .
+      dockerfile: Services/auth_service/Dockerfile
     ports:
       - "8006:8000"
     environment:

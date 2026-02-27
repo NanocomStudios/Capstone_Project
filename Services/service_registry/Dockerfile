@@ -5,10 +5,13 @@ ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY Services/service_registry/requirements.txt .
+COPY Lib/lib_requirement.txt /tmp/lib_requirement.txt
+RUN pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir -r /tmp/lib_requirement.txt
 
-COPY . .
+COPY Services/service_registry/ .
+COPY Lib/ ./Lib/
 
 EXPOSE 8000
 

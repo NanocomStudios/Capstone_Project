@@ -6,9 +6,11 @@ ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-COPY . /app
+COPY Services/cms_adapter/ /app
+COPY Lib/ /app/Lib/
 
 RUN pip install --no-cache-dir fastapi uvicorn requests pydantic xmltodict
+RUN pip install --no-cache-dir -r /app/Lib/lib_requirement.txt
 
 EXPOSE 8000
 
