@@ -10,18 +10,49 @@ import asyncio
 import os
 from fastapi.middleware.cors import CORSMiddleware
 
-wms_add_queue = []
-def wms_add_listener():
-    while True:
-        def callback(message):
-            order_id = message.get("order_id")
-            if(order_id in wms_add_queue):
-                wms_add_queue.remove(order_id)
-                response = message.get("response")
-                print(f"Received WMS add response for order {order_id}: {response}")
-        consume("wms_add_response", callback)
+# wms_add_listener removed - wms_adapter now owns the full add→pack→ship lifecycle
+# and publishes wms_order_shipped when done.
 
-Thread(target=wms_add_listener).start()
+def delivery_feedback_listener():
+    def callback(message):
+        try:
+            order_id = message.get("order_id")
+            delivery_id = message.get("delivery_id")
+            status = message.get("status")
+            reason = message.get("reason", "")
+            print(f"Received delivery feedback for order {order_id} (delivery {delivery_id}): status {status}")
+
+            if order_id in orders:
+                order = orders[order_id]
+                new_status = OrderStatus.COMPLETED if status == "delivered" else OrderStatus.FAILED
+                
+                order["status"] = new_status
+                order["updated_at"] = datetime.now().isoformat()
+                if "events" not in order:
+                    order["events"] = []
+                    
+                event_desc = f"Delivery {status}"
+                if reason:
+                    event_desc += f" - Reason: {reason}"
+                    
+                order["events"].append({
+                    "status": new_status,
+                    "timestamp": datetime.now().isoformat(),
+                    "description": event_desc
+                })
+                print(f"Updated local order {order_id} status to {new_status}")
+            else:
+                print(f"Order {order_id} not found locally to update feedback.")
+
+        except Exception as e:
+            print(f"Failed to process delivery feedback: {e}")
+
+    try:
+        consume("delivery_feedback", callback)
+    except Exception as e:
+        print(f"Failed to start delivery_feedback consumer: {e}")
+
+Thread(target=delivery_feedback_listener, daemon=True).start()
 
 
 app = FastAPI(title="Order Service")
@@ -105,50 +136,52 @@ async def get_client_orders(client_id: str):
 
 @app.post("/pack")
 async def pack_order(order_id: str):
-    order_info = httpx.get(f"{CMS_ADAPTER_URL}/orders/{order_id}", timeout=5)
-    if order_info.status_code != 200:
-        return {"response": "Failed to retrieve order info from CMS"}
-    order_data = order_info.json()
-    print(order_data)
-    package_id = order_data.get("Order").get("PackageID")
+    async with httpx.AsyncClient() as client:
+        order_info = await client.get(f"{CMS_ADAPTER_URL}/orders/{order_id}", timeout=5)
+        if order_info.status_code != 200:
+            return {"response": "Failed to retrieve order info from CMS"}
+        order_data = order_info.json()
+        print(order_data)
+        package_id = order_data.get("Order").get("PackageID")
 
-    wms_response = httpx.get(f"{WMS_ADAPTER_URL}/pack/{package_id}", timeout=5)
-    if wms_response.status_code != 200:
-        return {"response": "Failed to pack order in WMS"}
-    
-    return {"response": "Order packed successfully"}
+        wms_response = await client.get(f"{WMS_ADAPTER_URL}/pack/{package_id}", timeout=5)
+        if wms_response.status_code != 200:
+            return {"response": "Failed to pack order in WMS"}
+        
+        return {"response": "Order packed successfully"}
 
 @app.post("/ship")
 async def ship_order(order_id: str):
-    order_info = httpx.get(f"{CMS_ADAPTER_URL}/orders/{order_id}", timeout=5)
-    if order_info.status_code != 200:
-        return {"response": "Failed to retrieve order info from CMS"}
-    order_data = order_info.json()
-    package_id = order_data.get("Order").get("PackageID")
-    delivery_address = order_data.get("Order").get("Address")
+    async with httpx.AsyncClient() as client:
+        order_info = await client.get(f"{CMS_ADAPTER_URL}/orders/{order_id}", timeout=5)
+        if order_info.status_code != 200:
+            return {"response": "Failed to retrieve order info from CMS"}
+        order_data = order_info.json()
+        package_id = order_data.get("Order").get("PackageID")
+        delivery_address = order_data.get("Order").get("Address")
 
-    wms_response = httpx.get(f"{WMS_ADAPTER_URL}/ship/{package_id}", timeout=5)
-    if wms_response.status_code != 200:
-        return {"response": "Failed to ship order in WMS"}
-    
-    driver_response = httpx.get(f"{AUTH_SERVICE_URL}/select_driver", timeout=5)
-    if driver_response.status_code != 200:
-        return {"response": "Failed to select driver"}
-    
-    driver_data = driver_response.json()
-    driver_id = driver_data.get("driver")
+        wms_response = await client.get(f"{WMS_ADAPTER_URL}/ship/{package_id}", timeout=5)
+        if wms_response.status_code != 200:
+            return {"response": "Failed to ship order in WMS"}
+        
+        driver_response = await client.get(f"{AUTH_SERVICE_URL}/select_driver", timeout=5)
+        if driver_response.status_code != 200:
+            return {"response": "Failed to select driver"}
+        
+        driver_data = driver_response.json()
+        driver_id = driver_data.get("driver")
 
-    delivery_response = httpx.post(f"{DELIVERY_SERVICE_URL}/deliveries/assign", json={
-        "order_id": order_id,
-        "driver_id": driver_id,
-        "package_id": package_id,
-        "delivery_address": delivery_address
-    }, timeout=5)
+        delivery_response = await client.post(f"{DELIVERY_SERVICE_URL}/deliveries/assign", json={
+            "order_id": order_id,
+            "driver_id": driver_id,
+            "package_id": package_id,
+            "delivery_address": delivery_address
+        }, timeout=5)
 
-    if delivery_response.status_code != 200:
-        return {"response": "Failed to assign driver to delivery"}
+        if delivery_response.status_code != 200:
+            return {"response": "Failed to assign driver to delivery"}
 
-    return {"response": "Order shipped successfully"}
+        return {"response": "Order shipped successfully"}
 
 
 def process_order(order_id: str, order: OrderRequest):
@@ -170,33 +203,15 @@ def process_order(order_id: str, order: OrderRequest):
         
         # await update_order_status(order_id, OrderStatus.PROCESSING, "CMS updated")
         
-        #Send to WMS
-        # async with httpx.AsyncClient() as client:
-            # for item in order.items:
-            #     for i in range(item.quantity):
-        wms_add_queue.append(order_id)
-        publish("wms_add_request", {"order_id": order_id});
-
-        # wms_response = httpx.get(f"{WMS_ADAPTER_URL}/add", timeout=5)
-        # if wms_response.status_code != 200:
-        #     raise Exception("WMS failed")
-        
-        # package_id = wms_response.json().get("response")[0]["added"]
-        
-        
-        cms_resopnse = httpx.post(f"{CMS_ADAPTER_URL}/new_order", json={
-            "order_id": order_id,
-            "package_id": package_id,
-            "client_id": order.client_id,
+        # Publish to WMS with full order context so wms_adapter can run add→pack→ship
+        # and then notify CMS + Delivery via wms_order_shipped.
+        publish("wms_add_request", {
+            "order_id":         order_id,
             "delivery_address": order.delivery_address,
-            "customer_name": order.customer_name
-        }, timeout=5)
-
-        if cms_resopnse.status_code != 200:
-            raise Exception("CMS failed to register order")
-        # print("Package ID :- " + str(package_id))
-
-        # await update_order_status(order_id, OrderStatus.PROCESSING, "Items added to warehouse")
+            "client_id":        order.client_id,
+            "customer_name":    order.customer_name,
+        })
+        print(f"Published wms_add_request for order {order_id}")
         
         # #Send to ROS
         # async with httpx.AsyncClient() as client:

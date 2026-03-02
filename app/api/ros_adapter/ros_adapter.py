@@ -6,12 +6,13 @@ from contextlib import asynccontextmanager
 import asyncio
 import httpx
 from app.services.ros_adapter.ros_adapter import ROSConfig, ROSAdapter
+from app.core.config import SERVICE_REGISTRY_URL, ROS_LEGACY_URL, ROS_ADAPTER_URL
 
 async def register_with_registry():
-    registry_url = "http://localhost:8500/register"
+    registry_url = SERVICE_REGISTRY_URL + "/register"
     my_info = {
         "name": "ros-service",
-        "address": "http://ros-service:8001"
+        "address": ROS_ADAPTER_URL
     }
     
     async with httpx.AsyncClient() as client:
@@ -36,7 +37,7 @@ async def lifespan(app: FastAPI):
 
 
 config = ROSConfig(
-    base_url="http://localhost:8001",
+    base_url=ROS_LEGACY_URL,
     timeout=3
 )
 

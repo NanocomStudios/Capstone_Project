@@ -66,11 +66,14 @@ services:
       LEGACY_CMS_HOST: cms-legacy
       SERVICE_HOST: cms-adapter
       SERVICE_PORT: "8003"
+      RABBITMQ_HOST: rabbitmq
     depends_on:
       service-registry:
         condition: service_healthy
       cms-legacy:
         condition: service_started
+      rabbitmq:
+        condition: service_healthy
 
   order-service:
     build:

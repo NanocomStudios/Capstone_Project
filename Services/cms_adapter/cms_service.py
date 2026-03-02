@@ -34,8 +34,13 @@ class CMSService:
         )
 
         response.raise_for_status()
+        if not response.text or not response.text.strip():
+            return {"status": "ok"}
         ordered_dict = xmltodict.parse(response.text)
-        return dict(ordered_dict["Response"])
+        top_key = "Response" if "Response" in ordered_dict else next(iter(ordered_dict), None)
+        if top_key and ordered_dict[top_key] is not None:
+            return dict(ordered_dict[top_key])
+        return {"status": "ok"}
 
     def login(self, username, password):
         xml_body = f"""

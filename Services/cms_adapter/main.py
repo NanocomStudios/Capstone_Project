@@ -1,7 +1,11 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 from cms_service import CMSService
+from threading import Thread
+import sys
 import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+from Lib.publisher import consume
 import socket
 from fastapi.middleware.cors import CORSMiddleware
 app = FastAPI(title="CMS Adapter")
@@ -19,6 +23,22 @@ service = CMSService(socket.gethostbyname(os.getenv("SERVICE_REG_HOST", "localho
 service.register_cms_adapter(socket.gethostbyname(os.getenv("SERVICE_HOST", "localhost"))+ ":" + str(os.getenv("SERVICE_PORT", 8000)))
 
 print("Hello, cms has started abcd")
+
+def cms_new_order_listener():
+    def callback(message):
+        try:
+            print(f"Received wms_order_shipped (registering in CMS): {message}")
+            service.new_order(message)
+            print(f"Successfully registered order {message.get('order_id')} in CMS with package {message.get('package_id')}")
+        except Exception as e:
+            print(f"Failed to process wms_order_shipped in CMS for order {message.get('order_id')}: {e}")
+
+    try:
+        consume("wms_order_shipped", callback)
+    except Exception as e:
+        print(f"Failed to start wms_order_shipped consumer in CMS: {e}")
+
+Thread(target=cms_new_order_listener, daemon=True).start()
 class LoginRequest(BaseModel):
     username: str
     password: str

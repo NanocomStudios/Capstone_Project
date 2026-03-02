@@ -11,14 +11,53 @@ import socket
 adapter = WMSAdapter()
 
 def wms_add_listener():
-    
-    while True:
-        def callback(message):
-            order_id = message.get("order_id")
-            response = adapter.add_item()
-            publish("wms_add_response", {"order_id": order_id, "response": response})
 
-        consume("wms_add_request", callback)
+    def callback(message):
+        order_id       = message.get("order_id")
+        delivery_address = message.get("delivery_address", "")
+        client_id      = message.get("client_id", "")
+        customer_name  = message.get("customer_name", "")
+
+        try:
+            # 1. Add item to legacy WMS
+            add_response = adapter.add_item()
+            print(f"WMS add response for order {order_id}: {add_response}")
+
+            # Extract the real package_id assigned by the legacy WMS.
+            # Response format: {"response": [{"added": "<id>"}, ...]}
+            items = add_response.get("response", [])
+            package_id = None
+            for item in items:
+                if "added" in item:
+                    package_id = item["added"]
+                    break
+
+            if package_id is None:
+                print(f"WMS add did not return a package id for order {order_id}. Cannot continue.")
+                return
+
+            # 2. Pack
+            pack_response = adapter.pack_item(int(package_id))
+            print(f"WMS pack response for order {order_id} / package {package_id}: {pack_response}")
+
+            # 3. Ship
+            ship_response = adapter.ship_item(int(package_id))
+            print(f"WMS ship response for order {order_id} / package {package_id}: {ship_response}")
+
+            # 4. Notify CMS + Delivery via a single event
+            publish("wms_order_shipped", {
+                "order_id":         order_id,
+                "package_id":       package_id,
+                "delivery_address": delivery_address,
+                "client_id":        client_id,
+                "customer_name":    customer_name,
+            })
+            print(f"Published wms_order_shipped for order {order_id} / package {package_id}")
+
+        except Exception as e:
+            print(f"Error processing wms_add_request for order {order_id}: {e}")
+
+    consume("wms_add_request", callback)
 
 Thread(target=wms_add_listener).start()
 

@@ -24,6 +24,12 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from db import Base, Delivery, DeliveryFeedback, SessionLocal, engine
 from ros_client import ROSClient
+import sys
+from threading import Thread
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+from Lib.publisher import consume
+
+AUTH_SERVICE_URL = os.getenv("AUTH_SERVICE_URL", "http://auth-service:8000")
 
 ROS_SERVICE_URL = os.getenv("ROS_SERVICE_URL", "http://localhost:8001")
 
@@ -50,6 +56,61 @@ if(register_on_service_reg() != True):
 async def lifespan(_app: FastAPI):
     Base.metadata.create_all(bind=engine)
     yield
+
+def order_ready_listener():
+    def callback(message):
+        try:
+            print(f"Received wms_order_shipped (assigning delivery): {message}")
+            order_id = message.get("order_id")
+            package_id = message.get("package_id")
+            delivery_address = message.get("delivery_address")
+            
+            # Select an available driver via Auth Service
+            driver_response = requests.get(f"{AUTH_SERVICE_URL}/select_driver", timeout=5)
+            if driver_response.status_code != 200:
+                print(f"Failed to select driver for order {order_id}")
+                return
+            
+            driver_id = driver_response.json().get("driver")
+
+            # Create a Delivery record in the database
+            req = AssignDeliveryRequest(
+                order_id=order_id,
+                driver_id=driver_id,
+                package_id=package_id,
+                delivery_address=delivery_address
+            )
+            
+            db = SessionLocal()
+            try:
+                delivery = Delivery(
+                    id=str(uuid.uuid4()),
+                    order_id=req.order_id,
+                    driver_id=req.driver_id,
+                    package_id=req.package_id,
+                    delivery_address=req.delivery_address,
+                    status="assigned",
+                    created_at=datetime.utcnow(),
+                    updated_at=datetime.utcnow(),
+                )
+                db.add(delivery)
+                db.commit()
+                print(f"Delivery assigned for order {order_id}: delivery_id={delivery.id}, driver={driver_id}, package={package_id}")
+            except Exception as exc:
+                db.rollback()
+                print(f"DB error assigning delivery for order {order_id}: {exc}")
+            finally:
+                db.close()
+
+        except Exception as e:
+            print(f"Failed to process wms_order_shipped in delivery service: {e}")
+
+    try:
+        consume("wms_order_shipped", callback)
+    except Exception as e:
+        print(f"Failed to start wms_order_shipped consumer in delivery service: {e}")
+
+Thread(target=order_ready_listener, daemon=True).start()
 
 app = FastAPI(title="SwiftLogistics Delivery Service", lifespan=lifespan)
 
@@ -251,6 +312,14 @@ def order_feedback(delivery_id: str, req: FeedbackRequest):
         )
         db.add(feedback)
         db.commit()
+
+        publish("delivery_feedback", {
+            "delivery_id": delivery_id,
+            "order_id": delivery.order_id,
+            "status": req.status,
+            "reason": req.reason
+        })
+        print(f"Published delivery_feedback for order {delivery.order_id} (delivery {delivery_id}): status {req.status}")
 
         return {
             "message": f"Delivery marked as '{req.status}'",
