@@ -10,6 +10,10 @@ import socket
 
 adapter = WMSAdapter()
 
+def wms_failed_listener(message):
+    print(f"Received failed message for order {message.get('order_id')}: {message.get('error')}")
+
+
 def wms_add_listener():
 
     def callback(message):
@@ -51,7 +55,7 @@ def wms_add_listener():
                 "delivery_address": delivery_address,
                 "client_id":        client_id,
                 "customer_name":    customer_name,
-            })
+            }, failed_function=wms_failed_listener, faild_func_route_key="wms_add_failed", ttl=5000)
             print(f"Published wms_order_shipped for order {order_id} / package {package_id}")
 
         except Exception as e:
@@ -60,6 +64,44 @@ def wms_add_listener():
     consume("wms_add_request", callback)
 
 Thread(target=wms_add_listener).start()
+
+def wms_pack_listener():
+
+    def callback(message):
+        package_id = message.get("package_id")
+        try:
+            pack_response = adapter.pack_item(int(package_id))
+            print(f"WMS pack response for package {package_id}: {pack_response}")
+        except Exception as e:
+            print(f"Error processing wms_pack_request for package {package_id}: {e}")
+
+    consume("wms_pack_request", callback)
+
+Thread(target=wms_pack_listener).start()
+
+def wms_ship_listener():
+
+    def callback(message):
+        package_id = message.get("package_id")
+        try:
+            ship_response = adapter.ship_item(int(package_id))
+            print(f"WMS ship response for package {package_id}: {ship_response}")
+
+            publish("wms_order_shipped", {
+                "order_id":         order_id,
+                "package_id":       package_id,
+                "delivery_address": delivery_address,
+                "client_id":        client_id,
+                "customer_name":    customer_name,
+            })
+            print(f"Published wms_order_shipped for order {order_id} / package {package_id}")
+
+        except Exception as e:
+            print(f"Error processing wms_ship_request for package {package_id}: {e}")
+
+    consume("wms_ship_request", callback)
+
+Thread(target=wms_ship_listener).start()
 
 def register_on_service_reg():
     registry = socket.gethostbyname(os.getenv("SERVICE_REG_HOST", "localhost")) + ":" + str(8000)

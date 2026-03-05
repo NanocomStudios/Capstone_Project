@@ -1,18 +1,30 @@
+import threading
+
 import pika
 import json
 import os
 
 RABBIT_HOST = os.getenv("RABBIT_HOST", "rabbitmq")
 
-def publish(queue_name: str, message: dict):
+def publish(queue_name: str, message: dict, failed_function=None,faild_func_route_key=None, ttl=None):
     """Publish message to RabbitMQ (direct, single consumer)"""
     try:
+
         connection = pika.BlockingConnection(
             pika.ConnectionParameters(host=RABBIT_HOST)
         )
         channel = connection.channel()
         
-        channel.queue_declare(queue=queue_name, durable=True)
+        if failed_function:
+            channel.exchange_declare(exchange='failed_ex', exchange_type='direct')
+            channel.queue_declare(queue='return_to_publisher_queue')
+            channel.queue_bind(exchange='failed_ex', queue='return_to_publisher_queue', routing_key=faild_func_route_key if faild_func_route_key else "failed")
+
+        channel.queue_declare(queue=queue_name, durable=True, arguments={
+        'x-message-ttl': ttl if ttl else 60000,  # Message TTL in milliseconds
+        'x-dead-letter-exchange': 'failed_ex',
+        'x-dead-letter-routing-key': 'my_key'
+        })
         
         channel.basic_publish(
             exchange="",
@@ -99,3 +111,22 @@ def consume_fanout(exchange_name: str, callback):
         channel.start_consuming()
     except Exception as e:
         print(f"Failed to consume_fanout from {exchange_name}: {e}")
+
+failed_function_handlers = {}
+
+def failed_function_handler():
+    def callback(message):
+        route_key = message.get("route_key")
+        original_message = message.get("original_message")
+        if route_key in failed_function_handlers:
+            print(f"Handling failed message with route key '{route_key}': {original_message}")
+            try:
+                failed_function_handlers[route_key](original_message)
+            except Exception as e:
+                print(f"Error in failed function handler for route key '{route_key}': {e}")
+        else:
+            print(f"No handler registered for failed messages with route key '{route_key}'")
+
+    consume("return_to_publisher_queue", callback)
+
+threading.Thread(target=failed_function_handler, daemon=True).start()

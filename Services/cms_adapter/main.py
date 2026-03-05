@@ -34,7 +34,8 @@ def cms_new_order_listener():
             print(f"Failed to process wms_order_shipped in CMS for order {message.get('order_id')}: {e}")
 
     try:
-        consume("wms_order_shipped", callback)
+        while True:
+            consume("wms_order_shipped", callback)
     except Exception as e:
         print(f"Failed to start wms_order_shipped consumer in CMS: {e}")
 
