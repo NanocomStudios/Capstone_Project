@@ -48,15 +48,17 @@ def wms_add_listener():
             ship_response = adapter.ship_item(int(package_id))
             print(f"WMS ship response for order {order_id} / package {package_id}: {ship_response}")
 
-            # 4. Notify CMS + Delivery via a single event
-            publish_fanout("wms_order_shipped", {
+            # 4. Notify CMS + Delivery via a single event (now direct queues)
+            payload = {
                 "order_id":         order_id,
                 "package_id":       package_id,
                 "delivery_address": delivery_address,
                 "client_id":        client_id,
                 "customer_name":    customer_name,
-            })
-            print(f"Published fanout wms_order_shipped for order {order_id} / package {package_id}")
+            }
+            publish("cms_order_shipped", payload)
+            publish("delivery_order_shipped", payload)
+            print(f"Published order_shipped to CMS and Delivery for order {order_id} / package {package_id}")
 
         except Exception as e:
             print(f"Error processing wms_add_request for order {order_id}: {e}")
