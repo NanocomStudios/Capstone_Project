@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from models import OrderRequest, OrderResponse, OrderStatus, OrderStatusDetail
-from Lib.publisher import consume, publish
+from Lib.publisher import consume, publish, publish_fanout, consume_fanout
 from registry_client import register_service
 from uuid import uuid4
 from datetime import datetime
@@ -97,23 +97,39 @@ async def create_order(order: OrderRequest, background_tasks: BackgroundTasks):
 @app.get("/orders/{order_id}")
 async def get_order_status(order_id: str):
     """VIEW ORDER STATUS - Get detailed order status"""
-    if order_id not in orders:
-        raise HTTPException(status_code=404, detail="Order not found")
+    # if order_id not in orders:
+        # raise HTTPException(status_code=404, detail="Order not found")
     
-    order = orders[order_id]
+    async with httpx.AsyncClient() as client:
+        order_info = await client.get(f"{CMS_ADAPTER_URL}/orders/{order_id}", timeout=5)
+        if order_info.status_code != 200:
+            raise HTTPException(status_code=404, detail="Order not found")
+        order_data = order_info.json()
+    
+    async with httpx.AsyncClient() as client:
+        order_info = await client.get(f"{DELIVERY_SERVICE_URL}/delivery/{order_id}", timeout=5)
+        if order_info.status_code != 200:
+            raise HTTPException(status_code=404, detail="delivery not found")
+        delivery_data = order_info.json()
+
+    return {
+        **order_data,
+        "delivery": delivery_data
+    }
+
     
     #Return detailed status
-    return OrderStatusDetail(
-        order_id=order_id,
-        status=order["status"],
-        client_id=order["client_id"],
-        delivery_address=order["delivery_address"],
-        created_at=order["created_at"],
-        updated_at=order["updated_at"],
-        events=order.get("events", []),
-        estimated_delivery=order.get("estimated_delivery"),
-        error=order.get("error")
-    )
+    # return OrderStatusDetail(
+        # order_id=order_data["OrderID"],
+        # status=order_data["status"],
+        # client_id=order_data["clientID"],
+        # delivery_address=order_data["delivery_address"],
+        # created_at=order_data["created_at"],
+        # updated_at=order_data["updated_at"],
+        # events=order_data.get("events", []),
+        # estimated_delivery=order.get("estimated_delivery"),
+        # error=order.get("error")
+    # )
 
 @app.get("/orders/client/{client_id}")
 async def get_client_orders(client_id: str):

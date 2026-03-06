@@ -106,9 +106,9 @@ def order_ready_listener():
             print(f"Failed to process wms_order_shipped in delivery service: {e}")
 
     try:
-        consume("wms_order_shipped", callback)
+        consume("delivery_order_shipped", callback)
     except Exception as e:
-        print(f"Failed to start wms_order_shipped consumer in delivery service: {e}")
+        print(f"Failed to start delivery_order_shipped consumer in delivery service: {e}")
 
 Thread(target=order_ready_listener, daemon=True).start()
 
@@ -151,6 +151,26 @@ class FeedbackRequest(BaseModel):
     signature_data: Optional[str] = None
     photo_url: Optional[str] = None
 
+@app.get("/delivery/{order_id}")
+def get_order_status(order_id: str):
+    """VIEW ORDER STATUS - Get detailed order status"""
+    db = SessionLocal()
+    try:
+        delivery = db.query(Delivery).filter(Delivery.order_id == order_id).first()
+        if not delivery:
+            raise HTTPException(status_code=404, detail="Delivery not found")
+        return {
+            "delivery_id": delivery.id,
+            "order_id": delivery.order_id,
+            "package_id": delivery.package_id,
+            "driver_id": delivery.driver_id,
+            "status": delivery.status,
+            "delivery_address": delivery.delivery_address,
+            "last_updated": delivery.updated_at,
+        }
+    finally:
+        db.close()
+    # return order_data
 
 @app.get("/health")
 def health_check():
