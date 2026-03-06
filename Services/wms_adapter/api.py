@@ -2,7 +2,7 @@ import time
 from fastapi import FastAPI, HTTPException
 from adapter import WMSAdapter
 from pubsub_adapter import WMSPubSubAdapter
-from Lib.publisher import consume, publish
+from Lib.publisher import consume, publish, publish_to_failure_queue, publish_fanout
 from threading import Thread
 import os
 import requests
@@ -49,19 +49,26 @@ def wms_add_listener():
             print(f"WMS ship response for order {order_id} / package {package_id}: {ship_response}")
 
             # 4. Notify CMS + Delivery via a single event
-            publish("wms_order_shipped", {
+            publish_fanout("wms_order_shipped", {
                 "order_id":         order_id,
                 "package_id":       package_id,
                 "delivery_address": delivery_address,
                 "client_id":        client_id,
                 "customer_name":    customer_name,
-            }, failed_function=wms_failed_listener, faild_func_route_key="wms_add_failed", ttl=5000)
-            print(f"Published wms_order_shipped for order {order_id} / package {package_id}")
+            })
+            print(f"Published fanout wms_order_shipped for order {order_id} / package {package_id}")
 
         except Exception as e:
             print(f"Error processing wms_add_request for order {order_id}: {e}")
+            publish_to_failure_queue("wms_adapter.add_request.processing_failed", message, e)
 
-    consume("wms_add_request", callback)
+    import time
+    while True:
+        try:
+            consume("wms_add_request", callback)
+        except Exception as e:
+            print(f"Failed to start wms_add_request consumer: {e}")
+            time.sleep(5)
 
 Thread(target=wms_add_listener).start()
 
@@ -74,8 +81,15 @@ def wms_pack_listener():
             print(f"WMS pack response for package {package_id}: {pack_response}")
         except Exception as e:
             print(f"Error processing wms_pack_request for package {package_id}: {e}")
+            publish_to_failure_queue("wms_adapter.pack_request.failed", message, e)
 
-    consume("wms_pack_request", callback)
+    import time
+    while True:
+        try:
+            consume("wms_pack_request", callback)
+        except Exception as e:
+            print(f"Failed to start wms_pack_request consumer: {e}")
+            time.sleep(5)
 
 Thread(target=wms_pack_listener).start()
 
@@ -87,19 +101,26 @@ def wms_ship_listener():
             ship_response = adapter.ship_item(int(package_id))
             print(f"WMS ship response for package {package_id}: {ship_response}")
 
-            publish("wms_order_shipped", {
+            publish_fanout("wms_order_shipped", {
                 "order_id":         order_id,
                 "package_id":       package_id,
                 "delivery_address": delivery_address,
                 "client_id":        client_id,
                 "customer_name":    customer_name,
             })
-            print(f"Published wms_order_shipped for order {order_id} / package {package_id}")
+            print(f"Published fanout wms_order_shipped for order {order_id} / package {package_id}")
 
         except Exception as e:
             print(f"Error processing wms_ship_request for package {package_id}: {e}")
+            publish_to_failure_queue("wms_adapter.ship_request.failed", message, e)
 
-    consume("wms_ship_request", callback)
+    import time
+    while True:
+        try:
+            consume("wms_ship_request", callback)
+        except Exception as e:
+            print(f"Failed to start wms_ship_request consumer: {e}")
+            time.sleep(5)
 
 Thread(target=wms_ship_listener).start()
 

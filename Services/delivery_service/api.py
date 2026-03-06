@@ -27,7 +27,7 @@ from ros_client import ROSClient
 import sys
 from threading import Thread
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
-from Lib.publisher import consume
+from Lib.publisher import consume_fanout, publish_to_failure_queue, publish
 
 AUTH_SERVICE_URL = os.getenv("AUTH_SERVICE_URL", "http://auth-service:8000")
 
@@ -99,16 +99,20 @@ def order_ready_listener():
             except Exception as exc:
                 db.rollback()
                 print(f"DB error assigning delivery for order {order_id}: {exc}")
+                publish_to_failure_queue("delivery_service.wms_order_shipped.assignment_failed", message, exc)
             finally:
                 db.close()
 
         except Exception as e:
             print(f"Failed to process wms_order_shipped in delivery service: {e}")
 
-    try:
-        consume("wms_order_shipped", callback)
-    except Exception as e:
-        print(f"Failed to start wms_order_shipped consumer in delivery service: {e}")
+    import time
+    while True:
+        try:
+            consume_fanout("wms_order_shipped", callback)
+        except Exception as e:
+            print(f"Failed to start wms_order_shipped consumer in delivery service: {e}")
+            time.sleep(5)
 
 Thread(target=order_ready_listener, daemon=True).start()
 
@@ -313,13 +317,19 @@ def order_feedback(delivery_id: str, req: FeedbackRequest):
         db.add(feedback)
         db.commit()
 
-        publish("delivery_feedback", {
-            "delivery_id": delivery_id,
-            "order_id": delivery.order_id,
-            "status": req.status,
-            "reason": req.reason
-        })
-        print(f"Published delivery_feedback for order {delivery.order_id} (delivery {delivery_id}): status {req.status}")
+        try:
+            publish("delivery_feedback", {
+                "delivery_id": delivery_id,
+                "order_id": delivery.order_id,
+                "status": req.status,
+                "reason": req.reason
+            })
+            print(f"Published delivery_feedback for order {delivery.order_id} (delivery {delivery_id}): status {req.status}")
+        except Exception as pub_err:
+            print(f"Failed to publish delivery_feedback: {pub_err}")
+            publish_to_failure_queue("delivery_service.feedback.publish_failed", {
+                "delivery_id": delivery_id, "order_id": delivery.order_id, "status": req.status, "reason": req.reason
+            }, pub_err)
 
         return {
             "message": f"Delivery marked as '{req.status}'",

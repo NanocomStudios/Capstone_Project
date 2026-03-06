@@ -9,6 +9,7 @@ import httpx
 import asyncio
 import os
 from fastapi.middleware.cors import CORSMiddleware
+from Lib.publisher import publish_to_failure_queue
 
 # wms_add_listener removed - wms_adapter now owns the full add→pack→ship lifecycle
 # and publishes wms_order_shipped when done.
@@ -46,11 +47,15 @@ def delivery_feedback_listener():
 
         except Exception as e:
             print(f"Failed to process delivery feedback: {e}")
+            publish_to_failure_queue("order_service.delivery_feedback.processing_failed", message, e)
 
-    try:
-        consume("delivery_feedback", callback)
-    except Exception as e:
-        print(f"Failed to start delivery_feedback consumer: {e}")
+    import time
+    while True:
+        try:
+            consume("delivery_feedback", callback)
+        except Exception as e:
+            print(f"Failed to start delivery_feedback consumer: {e}")
+            time.sleep(5)
 
 Thread(target=delivery_feedback_listener, daemon=True).start()
 
@@ -134,54 +139,7 @@ async def get_client_orders(client_id: str):
         "orders": client_orders
     }
 
-@app.post("/pack")
-async def pack_order(order_id: str):
-    async with httpx.AsyncClient() as client:
-        order_info = await client.get(f"{CMS_ADAPTER_URL}/orders/{order_id}", timeout=5)
-        if order_info.status_code != 200:
-            return {"response": "Failed to retrieve order info from CMS"}
-        order_data = order_info.json()
-        print(order_data)
-        package_id = order_data.get("Order").get("PackageID")
 
-        wms_response = await client.get(f"{WMS_ADAPTER_URL}/pack/{package_id}", timeout=5)
-        if wms_response.status_code != 200:
-            return {"response": "Failed to pack order in WMS"}
-        
-        return {"response": "Order packed successfully"}
-
-@app.post("/ship")
-async def ship_order(order_id: str):
-    async with httpx.AsyncClient() as client:
-        order_info = await client.get(f"{CMS_ADAPTER_URL}/orders/{order_id}", timeout=5)
-        if order_info.status_code != 200:
-            return {"response": "Failed to retrieve order info from CMS"}
-        order_data = order_info.json()
-        package_id = order_data.get("Order").get("PackageID")
-        delivery_address = order_data.get("Order").get("Address")
-
-        wms_response = await client.get(f"{WMS_ADAPTER_URL}/ship/{package_id}", timeout=5)
-        if wms_response.status_code != 200:
-            return {"response": "Failed to ship order in WMS"}
-        
-        driver_response = await client.get(f"{AUTH_SERVICE_URL}/select_driver", timeout=5)
-        if driver_response.status_code != 200:
-            return {"response": "Failed to select driver"}
-        
-        driver_data = driver_response.json()
-        driver_id = driver_data.get("driver")
-
-        delivery_response = await client.post(f"{DELIVERY_SERVICE_URL}/deliveries/assign", json={
-            "order_id": order_id,
-            "driver_id": driver_id,
-            "package_id": package_id,
-            "delivery_address": delivery_address
-        }, timeout=5)
-
-        if delivery_response.status_code != 200:
-            return {"response": "Failed to assign driver to delivery"}
-
-        return {"response": "Order shipped successfully"}
 
 
 def process_order(order_id: str, order: OrderRequest):
@@ -258,6 +216,7 @@ def process_order(order_id: str, order: OrderRequest):
         #     })
         
         print(f"Order {order_id} failed: {e}")
+        publish_to_failure_queue("order_service.order_creation.processing_failed", {"order_id": order_id, "order": order.dict()}, e)
 
 # def wms_add_request_listener():
 

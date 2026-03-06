@@ -114,6 +114,71 @@ def consume_fanout(exchange_name: str, callback):
 
 failed_function_handlers = {}
 
+def recover_delivery_feedback_processing_failed(msg):
+    print(f"RECOVERY: Order Service failed to process delivery feedback. Manual reconciliation needed for: {msg}")
+
+def recover_order_creation_failed(msg):
+    print(f"RECOVERY: Order creation failed. Marking order as FAILED (if possible) and notifying client: {msg}")
+
+def recover_order_pack_api_failure(msg):
+    print(f"RECOVERY: Order pack API failed. Saga rollback/retry required for: {msg}")
+
+def recover_order_ship_api_failure(msg):
+    print(f"RECOVERY: Order ship API failed. Saga rollback/retry required for: {msg}")
+
+def recover_delivery_assignment_failed(msg):
+    print(f"RECOVERY: Delivery assignment failed. Adding to DLQ for driver reassignment: {msg}")
+
+def recover_delivery_feedback_publish_failed(msg):
+    print(f"RECOVERY: Delivery feedback publish failed. Retrying RMQ publish: {msg}")
+
+def recover_wms_add_request_failed(msg):
+    print(f"RECOVERY: WMS add request failed. Issuing remove/cancel to legacy WMS for: {msg}")
+
+def recover_wms_pack_request_failed(msg):
+    print(f"RECOVERY: WMS pack request failed. Manual intervention or retry required for: {msg}")
+
+def recover_wms_ship_request_failed(msg):
+    print(f"RECOVERY: WMS ship request failed. Manual intervention or retry required for: {msg}")
+
+failed_function_handlers = {
+    "order_service.delivery_feedback.processing_failed": recover_delivery_feedback_processing_failed,
+    "order_service.order_creation.processing_failed": recover_order_creation_failed,
+    "order_service.pack.api_failure": recover_order_pack_api_failure,
+    "order_service.ship.api_failure": recover_order_ship_api_failure,
+    "delivery_service.wms_order_shipped.assignment_failed": recover_delivery_assignment_failed,
+    "delivery_service.feedback.publish_failed": recover_delivery_feedback_publish_failed,
+    "wms_adapter.add_request.processing_failed": recover_wms_add_request_failed,
+    "wms_adapter.pack_request.failed": recover_wms_pack_request_failed,
+    "wms_adapter.ship_request.failed": recover_wms_ship_request_failed
+}
+
+import traceback
+
+def publish_to_failure_queue(route_key: str, original_message: dict, error: Exception):
+    """
+    Standardized method to publish unhandled exceptions to the failure mechanism.
+    """
+    failure_payload = {
+        "route_key": route_key,
+        "original_message": original_message,
+        "error_details": {
+            "error_type": type(error).__name__,
+            "message": str(error),
+            "traceback": traceback.format_exc()
+        }
+    }
+    
+    try:
+        publish(
+            queue_name="return_to_publisher_queue", 
+            message=failure_payload,
+            ttl=86400000  # 1 day TTL
+        )
+        print(f"Successfully routed failure to {route_key}")
+    except Exception as pub_err:
+        print(f"CRITICAL: Failed to publish fallback failure message! {pub_err}")
+
 def failed_function_handler():
     def callback(message):
         route_key = message.get("route_key")

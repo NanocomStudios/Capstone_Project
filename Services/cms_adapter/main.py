@@ -5,7 +5,7 @@ from threading import Thread
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
-from Lib.publisher import consume
+from Lib.publisher import consume_fanout
 import socket
 from fastapi.middleware.cors import CORSMiddleware
 app = FastAPI(title="CMS Adapter")
@@ -33,11 +33,13 @@ def cms_new_order_listener():
         except Exception as e:
             print(f"Failed to process wms_order_shipped in CMS for order {message.get('order_id')}: {e}")
 
-    try:
-        while True:
-            consume("wms_order_shipped", callback)
-    except Exception as e:
-        print(f"Failed to start wms_order_shipped consumer in CMS: {e}")
+    import time
+    while True:
+        try:
+            consume_fanout("wms_order_shipped", callback)
+        except Exception as e:
+            print(f"Failed to start wms_order_shipped consumer in CMS: {e}")
+            time.sleep(5)
 
 Thread(target=cms_new_order_listener, daemon=True).start()
 class LoginRequest(BaseModel):
