@@ -155,24 +155,5 @@ services:
       service-registry:
         condition: service_healthy
 
-  client-app:
-    build: Client/.
-    ports:
-      - "8000:80"
-
-    depends_on:
-      # service-registry:
-      #   condition: service_healthy
-      # wms-adapter:
-      #   condition: service_healthy
-      # cms-adapter:
-      #   condition: service_healthy
-      # order-service:
-      #   condition: service_healthy
-      # delivery-service:
-      #   condition: service_healthy
-      auth-service:
-        condition: service_healthy
-
 volumes:
   postgres_data:
